@@ -6,7 +6,6 @@
 <title>🛵 配達記録</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0F1117;color:#E8EAF0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
@@ -27,635 +26,2140 @@ input:focus,select:focus{border-color:#FF5722}
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
-const {useState,useEffect,useRef,useCallback} = React;
-
-const SERVICES = ["ロケット","Uber Eats","出前館","その他"];
-const SVC_CLR = {"ロケット":"#FF5722","Uber Eats":"#06C167","出前館":"#E94034","その他":"#8892A4"};
-const LS = {JB:"drv_jbkey",BIN:"drv_binid",AK:"drv_akey"};
-const uid = () => Math.random().toString(36).slice(2,10);
-const yen = n => `¥${Math.round(n||0).toLocaleString()}`;
-const toJpDate = d => {const dt=new Date(d+"T00:00:00");return `${dt.getMonth()+1}/${dt.getDate()}(${"日月火水木金土"[dt.getDay()]})`};
-const toMonthLabel = k => `${k.slice(0,4)}年${parseInt(k.slice(5))}月`;
-const sessTotal = s => s.deliveries.reduce((a,d)=>a+(d.amount||0),0);
-const sessCount = s => {const det=s.deliveries.filter(d=>!d._agg);return det.length>0?det.length:(s.deliveries[0]?._count||null)};
-const sessDist = s => {const ds=s.deliveries.filter(d=>d.distance>0);return ds.length?ds.reduce((a,d)=>a+d.distance,0):null};
-
-const SEED = [
-  {id:"s1",date:"2026-04-23",service:"ロケット",total_time:1.0,memo:"友達紹介ボーナス",deliveries:[{id:"d1",time:"",amount:2000,distance:null,pick:"",drop:"",memo:"友達紹介ボーナス",_agg:true,_count:1}]},
-  {id:"s2",date:"2026-04-25",service:"ロケット",total_time:3.5,memo:"赤羽、十条、王子",deliveries:[{id:"d2",time:"",amount:6486,distance:null,pick:"",drop:"赤羽・十条・王子",memo:"",_agg:true,_count:10}]},
-  {id:"s3",date:"2026-05-06",service:"ロケット",total_time:1.0,memo:"初配達ボーナス",deliveries:[{id:"d3",time:"",amount:20000,distance:null,pick:"",drop:"",memo:"初配達ボーナス",_agg:true,_count:1}]},
-  {id:"s4",date:"2026-05-20",service:"ロケット",total_time:1.5,memo:"赤羽、川口",deliveries:[{id:"d4",time:"",amount:2457,distance:null,pick:"",drop:"赤羽・川口",memo:"",_agg:true,_count:4}]},
-  {id:"s5",date:"2026-06-15",service:"Uber Eats",total_time:1.0,memo:"初Uber",deliveries:[{id:"d5",time:"",amount:533,distance:null,pick:"",drop:"",memo:"初Uber",_agg:true,_count:2}]},
-  {id:"s6",date:"2026-06-15",service:"ロケット",total_time:1.0,memo:"赤羽、王子、板橋、江古田",deliveries:[{id:"d6",time:"",amount:2336,distance:null,pick:"",drop:"赤羽・王子・板橋・江古田",memo:"",_agg:true,_count:5}]},
-  {id:"s7",date:"2026-06-16",service:"ロケット",total_time:2.0,memo:"赤羽・板橋・足立",deliveries:[
-    {id:"d7a",time:"20:35",amount:482,distance:2.1,pick:"麻辣駅 Ma-ra-eki",drop:"北区赤羽北2丁目",memo:""},
-    {id:"d7b",time:"20:52",amount:503,distance:2.4,pick:"KFC ビーンズ赤羽店",drop:"北区浮間3丁目",memo:""},
-    {id:"d7c",time:"21:24",amount:611,distance:3.9,pick:"鳥王",drop:"板橋区中台2丁目",memo:""},
-    {id:"d7d",time:"21:30",amount:236,distance:1.0,pick:"吉野家 志村坂上店",drop:"板橋区中台1丁目",memo:""},
-    {id:"d7e",time:"22:13",amount:683,distance:4.5,pick:"ナインティー赤羽店",drop:"足立区鹿浜4丁目",memo:""},
-    {id:"d7f",time:"22:21",amount:287,distance:1.6,pick:"鶏天豚天 通天道 赤羽店",drop:"足立区西新井7丁目",memo:""},
-  ]},
-];
-const SEED_EXP = {"2026-04":400,"2026-05":29320};
+<script>
+const {
+  useState,
+  useEffect,
+  useRef,
+  useCallback
+} = React;
+const SERVICES = ["ロケット", "Uber Eats", "出前館", "その他"];
+const SVC_CLR = {
+  "ロケット": "#FF5722",
+  "Uber Eats": "#06C167",
+  "出前館": "#E94034",
+  "その他": "#8892A4"
+};
+const LS = {
+  JB: "drv_jbkey",
+  BIN: "drv_binid",
+  AK: "drv_akey"
+};
+const uid = () => Math.random().toString(36).slice(2, 10);
+const yen = n => `¥${Math.round(n || 0).toLocaleString()}`;
+const toJpDate = d => {
+  const dt = new Date(d + "T00:00:00");
+  return `${dt.getMonth() + 1}/${dt.getDate()}(${"日月火水木金土"[dt.getDay()]})`;
+};
+const toMonthLabel = k => `${k.slice(0, 4)}年${parseInt(k.slice(5))}月`;
+const sessTotal = s => s.deliveries.reduce((a, d) => a + (d.amount || 0), 0);
+const sessCount = s => {
+  const det = s.deliveries.filter(d => !d._agg);
+  return det.length > 0 ? det.length : s.deliveries[0]?._count || null;
+};
+const sessDist = s => {
+  const ds = s.deliveries.filter(d => d.distance > 0);
+  return ds.length ? ds.reduce((a, d) => a + d.distance, 0) : null;
+};
+const SEED = [{
+  id: "s1",
+  date: "2026-04-23",
+  service: "ロケット",
+  total_time: 1.0,
+  memo: "友達紹介ボーナス",
+  deliveries: [{
+    id: "d1",
+    time: "",
+    amount: 2000,
+    distance: null,
+    pick: "",
+    drop: "",
+    memo: "友達紹介ボーナス",
+    _agg: true,
+    _count: 1
+  }]
+}, {
+  id: "s2",
+  date: "2026-04-25",
+  service: "ロケット",
+  total_time: 3.5,
+  memo: "赤羽、十条、王子",
+  deliveries: [{
+    id: "d2",
+    time: "",
+    amount: 6486,
+    distance: null,
+    pick: "",
+    drop: "赤羽・十条・王子",
+    memo: "",
+    _agg: true,
+    _count: 10
+  }]
+}, {
+  id: "s3",
+  date: "2026-05-06",
+  service: "ロケット",
+  total_time: 1.0,
+  memo: "初配達ボーナス",
+  deliveries: [{
+    id: "d3",
+    time: "",
+    amount: 20000,
+    distance: null,
+    pick: "",
+    drop: "",
+    memo: "初配達ボーナス",
+    _agg: true,
+    _count: 1
+  }]
+}, {
+  id: "s4",
+  date: "2026-05-20",
+  service: "ロケット",
+  total_time: 1.5,
+  memo: "赤羽、川口",
+  deliveries: [{
+    id: "d4",
+    time: "",
+    amount: 2457,
+    distance: null,
+    pick: "",
+    drop: "赤羽・川口",
+    memo: "",
+    _agg: true,
+    _count: 4
+  }]
+}, {
+  id: "s5",
+  date: "2026-06-15",
+  service: "Uber Eats",
+  total_time: 1.0,
+  memo: "初Uber",
+  deliveries: [{
+    id: "d5",
+    time: "",
+    amount: 533,
+    distance: null,
+    pick: "",
+    drop: "",
+    memo: "初Uber",
+    _agg: true,
+    _count: 2
+  }]
+}, {
+  id: "s6",
+  date: "2026-06-15",
+  service: "ロケット",
+  total_time: 1.0,
+  memo: "赤羽、王子、板橋、江古田",
+  deliveries: [{
+    id: "d6",
+    time: "",
+    amount: 2336,
+    distance: null,
+    pick: "",
+    drop: "赤羽・王子・板橋・江古田",
+    memo: "",
+    _agg: true,
+    _count: 5
+  }]
+}, {
+  id: "s7",
+  date: "2026-06-16",
+  service: "ロケット",
+  total_time: 2.0,
+  memo: "赤羽・板橋・足立",
+  deliveries: [{
+    id: "d7a",
+    time: "20:35",
+    amount: 482,
+    distance: 2.1,
+    pick: "麻辣駅 Ma-ra-eki",
+    drop: "北区赤羽北2丁目",
+    memo: ""
+  }, {
+    id: "d7b",
+    time: "20:52",
+    amount: 503,
+    distance: 2.4,
+    pick: "KFC ビーンズ赤羽店",
+    drop: "北区浮間3丁目",
+    memo: ""
+  }, {
+    id: "d7c",
+    time: "21:24",
+    amount: 611,
+    distance: 3.9,
+    pick: "鳥王",
+    drop: "板橋区中台2丁目",
+    memo: ""
+  }, {
+    id: "d7d",
+    time: "21:30",
+    amount: 236,
+    distance: 1.0,
+    pick: "吉野家 志村坂上店",
+    drop: "板橋区中台1丁目",
+    memo: ""
+  }, {
+    id: "d7e",
+    time: "22:13",
+    amount: 683,
+    distance: 4.5,
+    pick: "ナインティー赤羽店",
+    drop: "足立区鹿浜4丁目",
+    memo: ""
+  }, {
+    id: "d7f",
+    time: "22:21",
+    amount: 287,
+    distance: 1.6,
+    pick: "鶏天豚天 通天道 赤羽店",
+    drop: "足立区西新井7丁目",
+    memo: ""
+  }]
+}];
+const SEED_EXP = {
+  "2026-04": 400,
+  "2026-05": 29320
+};
 
 // ── JSONbin ──────────────────────────────────────────────────────────
 const JB = "https://api.jsonbin.io/v3/b";
-async function jbRead(k,id){const r=await fetch(`${JB}/${id}/latest`,{headers:{"X-Master-Key":k}});if(!r.ok)throw new Error(r.status);return(await r.json()).record}
-async function jbWrite(k,id,d){const r=await fetch(`${JB}/${id}`,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":k},body:JSON.stringify(d)});if(!r.ok)throw new Error(r.status)}
-async function jbCreate(k,d){const r=await fetch(JB,{method:"POST",headers:{"Content-Type":"application/json","X-Master-Key":k,"X-Bin-Name":"delivery"},body:JSON.stringify(d)});if(!r.ok)throw new Error(r.status);return(await r.json()).metadata.id}
+async function jbRead(k, id) {
+  const r = await fetch(`${JB}/${id}/latest`, {
+    headers: {
+      "X-Master-Key": k
+    }
+  });
+  if (!r.ok) throw new Error(r.status);
+  return (await r.json()).record;
+}
+async function jbWrite(k, id, d) {
+  const r = await fetch(`${JB}/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": k
+    },
+    body: JSON.stringify(d)
+  });
+  if (!r.ok) throw new Error(r.status);
+}
+async function jbCreate(k, d) {
+  const r = await fetch(JB, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": k,
+      "X-Bin-Name": "delivery"
+    },
+    body: JSON.stringify(d)
+  });
+  if (!r.ok) throw new Error(r.status);
+  return (await r.json()).metadata.id;
+}
 
 // ── Claude API ───────────────────────────────────────────────────────
-async function analyzeImg(ak,b64,mime){
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":ak,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:800,messages:[{role:"user",content:[
-    {type:"image",source:{type:"base64",media_type:mime,data:b64}},
-    {type:"text",text:`このデリバリーアプリのスクリーンショットから配達記録を抽出してください。以下のJSONのみ返してください（コードブロック・説明文不要）:\n{"date":"YYYY-MM-DD","service":"ロケット","total_amount":数値,"deliveries":[{"time":"HH:MM","amount":数値,"distance_km":数値またはnull,"pick":"店舗名","drop":"配達先エリア"}]}\nserviceは「ロケット」「Uber Eats」「出前館」「その他」から選択。日付不明なら今日。距離不明ならnull。`}
-  ]}]})});
-  const d=await r.json();const txt=d.content?.find(c=>c.type==="text")?.text||"";
-  return JSON.parse(txt.replace(/```json|```/g,"").trim());
+async function analyzeImg(ak, b64, mime) {
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ak,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 800,
+      messages: [{
+        role: "user",
+        content: [{
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: mime,
+            data: b64
+          }
+        }, {
+          type: "text",
+          text: `このデリバリーアプリのスクリーンショットから配達記録を抽出してください。以下のJSONのみ返してください（コードブロック・説明文不要）:\n{"date":"YYYY-MM-DD","service":"ロケット","total_amount":数値,"deliveries":[{"time":"HH:MM","amount":数値,"distance_km":数値またはnull,"pick":"店舗名","drop":"配達先エリア"}]}\nserviceは「ロケット」「Uber Eats」「出前館」「その他」から選択。日付不明なら今日。距離不明ならnull。`
+        }]
+      }]
+    })
+  });
+  const d = await r.json();
+  const txt = d.content?.find(c => c.type === "text")?.text || "";
+  return JSON.parse(txt.replace(/```json|```/g, "").trim());
 }
 
 // ── Setup ────────────────────────────────────────────────────────────
-function SetupScreen({onDone}){
-  const [jbKey,setJbKey]=useState("");const [aKey,setAKey]=useState("");
-  const [loading,setLoading]=useState(false);const [err,setErr]=useState("");
-  const go=async()=>{
-    if(!jbKey.trim()){setErr("JSONbin APIキーを入力してください");return}
-    setLoading(true);setErr("");
-    try{
-      const id=await jbCreate(jbKey.trim(),{sessions:SEED,expenses:SEED_EXP});
-      localStorage.setItem(LS.JB,jbKey.trim());localStorage.setItem(LS.BIN,id);
-      if(aKey.trim())localStorage.setItem(LS.AK,aKey.trim());
+function SetupScreen({
+  onDone
+}) {
+  const [jbKey, setJbKey] = useState("");
+  const [aKey, setAKey] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const go = async () => {
+    if (!jbKey.trim()) {
+      setErr("JSONbin APIキーを入力してください");
+      return;
+    }
+    setLoading(true);
+    setErr("");
+    try {
+      const id = await jbCreate(jbKey.trim(), {
+        sessions: SEED,
+        expenses: SEED_EXP
+      });
+      localStorage.setItem(LS.JB, jbKey.trim());
+      localStorage.setItem(LS.BIN, id);
+      if (aKey.trim()) localStorage.setItem(LS.AK, aKey.trim());
       onDone();
-    }catch(e){setErr("JSONbin接続に失敗しました。APIキーを確認してください。\n"+e.message);}
-    finally{setLoading(false);}
+    } catch (e) {
+      setErr("JSONbin接続に失敗しました。APIキーを確認してください。\n" + e.message);
+    } finally {
+      setLoading(false);
+    }
   };
-  return(
-    <div style={{padding:24,maxWidth:480,margin:"0 auto"}}>
-      <div style={{textAlign:"center",marginBottom:32,paddingTop:48}}>
-        <div style={{fontSize:48,marginBottom:8}}>🛵</div>
-        <div style={{fontSize:24,fontWeight:800}}>配達記録</div>
-        <div style={{fontSize:13,color:"#6B7280",marginTop:6}}>初回セットアップ</div>
-      </div>
-      <div style={{display:"flex",flexDirection:"column",gap:16}}>
-        <div>
-          <div className="lbl">JSONbin APIキー（必須）</div>
-          <input value={jbKey} onChange={e=>setJbKey(e.target.value)} placeholder="$2a$10$..."/>
-          <div style={{fontSize:11,color:"#6B7280",marginTop:5}}>jsonbin.io → API Keys → Master Key</div>
-        </div>
-        <div>
-          <div className="lbl">Anthropic APIキー（画像読み取り用・任意）</div>
-          <input value={aKey} onChange={e=>setAKey(e.target.value)} placeholder="sk-ant-..."/>
-          <div style={{fontSize:11,color:"#6B7280",marginTop:5}}>未入力の場合、画像読み取りは使えません</div>
-        </div>
-        {err&&<div style={{background:"#2A1515",color:"#FF6B6B",padding:12,borderRadius:10,fontSize:13,whiteSpace:"pre-wrap"}}>{err}</div>}
-        <button className="btn btn-o" onClick={go} disabled={loading}>{loading?"⟳ 設定中...":"設定して始める"}</button>
-      </div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 24,
+      maxWidth: 480,
+      margin: "0 auto"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      marginBottom: 32,
+      paddingTop: 48
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 48,
+      marginBottom: 8
+    }
+  }, "🛵"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: 800
+    }
+  }, "配達記録"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#6B7280",
+      marginTop: 6
+    }
+  }, "初回セットアップ")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "JSONbin APIキー（必須）"), /*#__PURE__*/React.createElement("input", {
+    value: jbKey,
+    onChange: e => setJbKey(e.target.value),
+    placeholder: "$2a$10$..."
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      marginTop: 5
+    }
+  }, "jsonbin.io → API Keys → Master Key")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "Anthropic APIキー（画像読み取り用・任意）"), /*#__PURE__*/React.createElement("input", {
+    value: aKey,
+    onChange: e => setAKey(e.target.value),
+    placeholder: "sk-ant-..."
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      marginTop: 5
+    }
+  }, "未入力の場合、画像読み取りは使えません")), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#2A1515",
+      color: "#FF6B6B",
+      padding: 12,
+      borderRadius: 10,
+      fontSize: 13,
+      whiteSpace: "pre-wrap"
+    }
+  }, err), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-o",
+    onClick: go,
+    disabled: loading
+  }, loading ? "⟳ 設定中..." : "設定して始める")));
 }
 
 // ── App ──────────────────────────────────────────────────────────────
-function App(){
-  const [step,setStep]=useState("loading");
-  const [sessions,setSessions]=useState([]);
-  const [expenses,setExpenses]=useState({});
-  const [tab,setTab]=useState("home");
-  const [status,setStatus]=useState("");
-  const [addStep,setAddStep]=useState("pick");
-  const [draft,setDraft]=useState(null);
-  const [addErr,setAddErr]=useState("");
-  const [extracting,setExtracting]=useState(false);
-  const [openId,setOpenId]=useState(null);
-  const fileRef=useRef();
-  const timer=useRef();
-  const getJB=()=>localStorage.getItem(LS.JB)||"";
-  const getBIN=()=>localStorage.getItem(LS.BIN)||"";
-  const getAK=()=>localStorage.getItem(LS.AK)||"";
-
-  useEffect(()=>{
-    if(!localStorage.getItem(LS.JB)||!localStorage.getItem(LS.BIN)){setStep("setup");return}
-    jbRead(getJB(),getBIN())
-      .then(d=>{setSessions(d?.sessions||SEED);setExpenses(d?.expenses||SEED_EXP);setStep("main");})
-      .catch(()=>{setSessions(SEED);setExpenses(SEED_EXP);setStep("main");});
-  },[]);
-
-  const doSave=useCallback((s,e)=>{
-    if(timer.current)clearTimeout(timer.current);
+function App() {
+  const [step, setStep] = useState("loading");
+  const [sessions, setSessions] = useState([]);
+  const [expenses, setExpenses] = useState({});
+  const [tab, setTab] = useState("home");
+  const [status, setStatus] = useState("");
+  const [addStep, setAddStep] = useState("pick");
+  const [draft, setDraft] = useState(null);
+  const [addErr, setAddErr] = useState("");
+  const [extracting, setExtracting] = useState(false);
+  const [openId, setOpenId] = useState(null);
+  const fileRef = useRef();
+  const timer = useRef();
+  const getJB = () => localStorage.getItem(LS.JB) || "";
+  const getBIN = () => localStorage.getItem(LS.BIN) || "";
+  const getAK = () => localStorage.getItem(LS.AK) || "";
+  useEffect(() => {
+    if (!localStorage.getItem(LS.JB) || !localStorage.getItem(LS.BIN)) {
+      setStep("setup");
+      return;
+    }
+    jbRead(getJB(), getBIN()).then(d => {
+      setSessions(d?.sessions || SEED);
+      setExpenses(d?.expenses || SEED_EXP);
+      setStep("main");
+    }).catch(() => {
+      setSessions(SEED);
+      setExpenses(SEED_EXP);
+      setStep("main");
+    });
+  }, []);
+  const doSave = useCallback((s, e) => {
+    if (timer.current) clearTimeout(timer.current);
     setStatus("saving");
-    timer.current=setTimeout(async()=>{
-      try{await jbWrite(getJB(),getBIN(),{sessions:s,expenses:e});setStatus("saved");setTimeout(()=>setStatus(""),3000);}
-      catch{setStatus("error");}
-    },2000);
-  },[]);
-
-  const updSessions=useCallback((s)=>{setSessions(s);doSave(s,expenses);},[expenses,doSave]);
-  const updExpenses=useCallback((e)=>{setExpenses(e);doSave(sessions,e);},[sessions,doSave]);
-
-  const saveSession=useCallback(s=>{
-    const next=[...sessions.filter(x=>x.id!==s.id),s].sort((a,b)=>b.date.localeCompare(a.date));
-    updSessions(next);setTab("log");setAddStep("pick");setDraft(null);setAddErr("");
-  },[sessions,updSessions]);
-
-  const delSession=useCallback(id=>{updSessions(sessions.filter(x=>x.id!==id));setOpenId(null);},[sessions,updSessions]);
-
-  const handleFile=useCallback(async file=>{
-    const ak=getAK();
-    if(!ak){setAddErr("Anthropic APIキーが未設定です。分析タブの設定から追加してください。");return}
-    setExtracting(true);setAddErr("");
-    try{
-      const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(file);});
-      const result=await analyzeImg(ak,b64,file.type||"image/jpeg");
-      const dels=(result.deliveries||[]).map(d=>({id:uid(),time:d.time||"",amount:d.amount||0,distance:d.distance_km||null,pick:d.pick||"",drop:d.drop||"",memo:""}));
-      if(!dels.length)dels.push({id:uid(),time:"",amount:result.total_amount||0,distance:null,pick:"",drop:"",memo:"",_agg:true});
-      setDraft({id:uid(),date:result.date||new Date().toISOString().slice(0,10),service:SERVICES.includes(result.service)?result.service:"ロケット",total_time:0,memo:"",deliveries:dels});
+    timer.current = setTimeout(async () => {
+      try {
+        await jbWrite(getJB(), getBIN(), {
+          sessions: s,
+          expenses: e
+        });
+        setStatus("saved");
+        setTimeout(() => setStatus(""), 3000);
+      } catch {
+        setStatus("error");
+      }
+    }, 2000);
+  }, []);
+  const updSessions = useCallback(s => {
+    setSessions(s);
+    doSave(s, expenses);
+  }, [expenses, doSave]);
+  const updExpenses = useCallback(e => {
+    setExpenses(e);
+    doSave(sessions, e);
+  }, [sessions, doSave]);
+  const saveSession = useCallback(s => {
+    const next = [...sessions.filter(x => x.id !== s.id), s].sort((a, b) => b.date.localeCompare(a.date));
+    updSessions(next);
+    setTab("log");
+    setAddStep("pick");
+    setDraft(null);
+    setAddErr("");
+  }, [sessions, updSessions]);
+  const delSession = useCallback(id => {
+    updSessions(sessions.filter(x => x.id !== id));
+    setOpenId(null);
+  }, [sessions, updSessions]);
+  const handleFile = useCallback(async file => {
+    const ak = getAK();
+    if (!ak) {
+      setAddErr("Anthropic APIキーが未設定です。分析タブの設定から追加してください。");
+      return;
+    }
+    setExtracting(true);
+    setAddErr("");
+    try {
+      const b64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(",")[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const result = await analyzeImg(ak, b64, file.type || "image/jpeg");
+      const dels = (result.deliveries || []).map(d => ({
+        id: uid(),
+        time: d.time || "",
+        amount: d.amount || 0,
+        distance: d.distance_km || null,
+        pick: d.pick || "",
+        drop: d.drop || "",
+        memo: ""
+      }));
+      if (!dels.length) dels.push({
+        id: uid(),
+        time: "",
+        amount: result.total_amount || 0,
+        distance: null,
+        pick: "",
+        drop: "",
+        memo: "",
+        _agg: true
+      });
+      setDraft({
+        id: uid(),
+        date: result.date || new Date().toISOString().slice(0, 10),
+        service: SERVICES.includes(result.service) ? result.service : "ロケット",
+        total_time: 0,
+        memo: "",
+        deliveries: dels
+      });
       setAddStep("confirm");
-    }catch(e){setAddErr("読み取りに失敗しました: "+e.message);}
-    finally{setExtracting(false);}
-  },[]);
-
-  if(step==="loading")return<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontSize:32,color:"#6B7280"}}><span className="spin">⟳</span></div>;
-  if(step==="setup")return<SetupScreen onDone={()=>{jbRead(getJB(),getBIN()).then(d=>{setSessions(d?.sessions||SEED);setExpenses(d?.expenses||SEED_EXP)}).catch(()=>{});setStep("main");}}/>;
-
-  const nav=t=>{setTab(t);if(t==="add"){setAddStep("pick");setDraft(null);setAddErr("");}};
-
-  return(
-    <div style={{background:"#0F1117",minHeight:"100vh",color:"#E8EAF0",paddingBottom:80}}>
-      {status&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:status==="error"?"#CC2222":"#1C1F2A",color:status==="error"?"#fff":"#6B7280",padding:"5px 16px",borderRadius:"0 0 10px 10px",fontSize:12,zIndex:200,border:"1px solid #2A2D3A",borderTop:"none"}}>
-        {status==="saving"?"保存中...":status==="saved"?"✓ 保存済み":"⚠ 保存失敗"}
-      </div>}
-      {tab==="home"&&<HomeTab sessions={sessions} expenses={expenses} onAdd={()=>nav("add")}/>}
-      {tab==="add"&&<AddTab step={addStep} setStep={setAddStep} draft={draft} setDraft={setDraft} err={addErr} setErr={setAddErr} extracting={extracting} fileRef={fileRef} onSave={saveSession}/>}
-      {tab==="log"&&<LogTab sessions={sessions} openId={openId} setOpenId={setOpenId} onDelete={delSession}/>}
-      {tab==="analysis"&&<AnalysisTab sessions={sessions} expenses={expenses} setExpenses={updExpenses}/>}
-      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:520,background:"#0F1117",borderTop:"1px solid #2A2D3A",display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom,0)"}}>
-        {[["home","🏠","ホーム"],["add","➕","追加"],["log","📋","記録"],["analysis","📊","分析"]].map(([id,ic,l])=>(
-          <button key={id} onClick={()=>nav(id)} style={{flex:1,padding:"10px 0 8px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,color:tab===id?"#FF5722":"#6B7280",fontFamily:"inherit"}}>
-            <span style={{fontSize:22}}>{ic}</span><span style={{fontSize:10,fontWeight:600}}>{l}</span>
-          </button>
-        ))}
-      </nav>
-      <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{if(e.target.files[0])handleFile(e.target.files[0]);e.target.value="";}}/>
-    </div>
-  );
+    } catch (e) {
+      setAddErr("読み取りに失敗しました: " + e.message);
+    } finally {
+      setExtracting(false);
+    }
+  }, []);
+  if (step === "loading") return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100vh",
+      fontSize: 32,
+      color: "#6B7280"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "spin"
+  }, "⟳"));
+  if (step === "setup") return /*#__PURE__*/React.createElement(SetupScreen, {
+    onDone: () => {
+      jbRead(getJB(), getBIN()).then(d => {
+        setSessions(d?.sessions || SEED);
+        setExpenses(d?.expenses || SEED_EXP);
+      }).catch(() => {});
+      setStep("main");
+    }
+  });
+  const nav = t => {
+    setTab(t);
+    if (t === "add") {
+      setAddStep("pick");
+      setDraft(null);
+      setAddErr("");
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#0F1117",
+      minHeight: "100vh",
+      color: "#E8EAF0",
+      paddingBottom: 80
+    }
+  }, status && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      top: 0,
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: status === "error" ? "#CC2222" : "#1C1F2A",
+      color: status === "error" ? "#fff" : "#6B7280",
+      padding: "5px 16px",
+      borderRadius: "0 0 10px 10px",
+      fontSize: 12,
+      zIndex: 200,
+      border: "1px solid #2A2D3A",
+      borderTop: "none"
+    }
+  }, status === "saving" ? "保存中..." : status === "saved" ? "✓ 保存済み" : "⚠ 保存失敗"), tab === "home" && /*#__PURE__*/React.createElement(HomeTab, {
+    sessions: sessions,
+    expenses: expenses,
+    onAdd: () => nav("add")
+  }), tab === "add" && /*#__PURE__*/React.createElement(AddTab, {
+    step: addStep,
+    setStep: setAddStep,
+    draft: draft,
+    setDraft: setDraft,
+    err: addErr,
+    setErr: setAddErr,
+    extracting: extracting,
+    fileRef: fileRef,
+    onSave: saveSession
+  }), tab === "log" && /*#__PURE__*/React.createElement(LogTab, {
+    sessions: sessions,
+    openId: openId,
+    setOpenId: setOpenId,
+    onDelete: delSession
+  }), tab === "analysis" && /*#__PURE__*/React.createElement(AnalysisTab, {
+    sessions: sessions,
+    expenses: expenses,
+    setExpenses: updExpenses
+  }), /*#__PURE__*/React.createElement("nav", {
+    style: {
+      position: "fixed",
+      bottom: 0,
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "100%",
+      maxWidth: 520,
+      background: "#0F1117",
+      borderTop: "1px solid #2A2D3A",
+      display: "flex",
+      zIndex: 100,
+      paddingBottom: "env(safe-area-inset-bottom,0)"
+    }
+  }, [["home", "🏠", "ホーム"], ["add", "➕", "追加"], ["log", "📋", "記録"], ["analysis", "📊", "分析"]].map(([id, ic, l]) => /*#__PURE__*/React.createElement("button", {
+    key: id,
+    onClick: () => nav(id),
+    style: {
+      flex: 1,
+      padding: "10px 0 8px",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 3,
+      color: tab === id ? "#FF5722" : "#6B7280",
+      fontFamily: "inherit"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 22
+    }
+  }, ic), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      fontWeight: 600
+    }
+  }, l)))), /*#__PURE__*/React.createElement("input", {
+    ref: fileRef,
+    type: "file",
+    accept: "image/*",
+    style: {
+      display: "none"
+    },
+    onChange: e => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+      e.target.value = "";
+    }
+  }));
 }
 
 // ── HomeTab ──────────────────────────────────────────────────────────
-function HomeTab({sessions,expenses,onAdd}){
-  const today=new Date().toISOString().slice(0,10);const tm=today.slice(0,7);
-  const ms=sessions.filter(s=>s.date.startsWith(tm));
-  const mRev=ms.reduce((a,s)=>a+sessTotal(s),0);const mExp=expenses[tm]||0;
-  const mDays=new Set(ms.map(s=>s.date)).size;
-  const mHrs=ms.reduce((a,s)=>a+(s.total_time||0),0);
-  const mCnt=ms.reduce((a,s)=>a+(sessCount(s)||0),0);
-  const todayRev=sessions.filter(s=>s.date===today).reduce((a,s)=>a+sessTotal(s),0);
-  return(
-    <div>
-      <div style={{padding:"28px 16px 16px"}}>
-        <div style={{fontSize:12,color:"#6B7280",marginBottom:4}}>{toMonthLabel(tm)} の実績</div>
-        <div style={{fontSize:40,fontWeight:800,letterSpacing:-2,lineHeight:1.1}}>{yen(mRev-mExp)}</div>
-        <div style={{fontSize:13,color:"#6B7280",marginTop:5}}>{yen(mRev)} 売上 ー {yen(mExp)} 経費</div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,padding:"0 16px 16px"}}>
-        {[["稼働日",`${mDays}日`],["件数",`${mCnt}件`],["時間",`${mHrs.toFixed(1)}h`]].map(([l,v])=>(
-          <div key={l} className="card" style={{textAlign:"center",padding:"12px 8px"}}>
-            <div className="lbl">{l}</div><div style={{fontSize:20,fontWeight:700}}>{v}</div>
-          </div>
-        ))}
-      </div>
-      {todayRev>0&&<div style={{padding:"0 16px 12px"}}><div className="card" style={{borderLeft:"3px solid #FF5722",padding:"12px 16px",borderRadius:"0 14px 14px 0"}}><div className="lbl">今日</div><div style={{fontSize:24,fontWeight:700}}>{yen(todayRev)}</div></div></div>}
-      <div style={{height:1,background:"#2A2D3A",margin:"0 16px"}}/>
-      <div style={{padding:"12px 16px 6px",fontSize:12,fontWeight:700,color:"#6B7280"}}>最近の記録</div>
-      {sessions.length===0?(
-        <div style={{padding:40,textAlign:"center"}}>
-          <div style={{color:"#6B7280",marginBottom:16}}>まだ記録がありません</div>
-          <button className="btn btn-o" onClick={onAdd} style={{width:"auto",padding:"12px 28px"}}>最初の記録を追加</button>
-        </div>
-      ):sessions.slice(0,6).map(s=>(
-        <div key={s.id} style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #1C1F2A"}}>
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-              <span style={{fontSize:14,fontWeight:600}}>{toJpDate(s.date)}</span>
-              <span style={{fontSize:11,background:SVC_CLR[s.service]+"25",color:SVC_CLR[s.service],padding:"2px 8px",borderRadius:20,fontWeight:600}}>{s.service}</span>
-            </div>
-            <div style={{fontSize:12,color:"#6B7280"}}>{sessCount(s)?`${sessCount(s)}件`:""}{s.total_time?`　${s.total_time}h`:""}</div>
-          </div>
-          <div style={{fontSize:18,fontWeight:700}}>{yen(sessTotal(s))}</div>
-        </div>
-      ))}
-    </div>
-  );
+function HomeTab({
+  sessions,
+  expenses,
+  onAdd
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const tm = today.slice(0, 7);
+  const ms = sessions.filter(s => s.date.startsWith(tm));
+  const mRev = ms.reduce((a, s) => a + sessTotal(s), 0);
+  const mExp = expenses[tm] || 0;
+  const mDays = new Set(ms.map(s => s.date)).size;
+  const mHrs = ms.reduce((a, s) => a + (s.total_time || 0), 0);
+  const mCnt = ms.reduce((a, s) => a + (sessCount(s) || 0), 0);
+  const todayRev = sessions.filter(s => s.date === today).reduce((a, s) => a + sessTotal(s), 0);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "28px 16px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280",
+      marginBottom: 4
+    }
+  }, toMonthLabel(tm), " の実績"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 40,
+      fontWeight: 800,
+      letterSpacing: -2,
+      lineHeight: 1.1
+    }
+  }, yen(mRev - mExp)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#6B7280",
+      marginTop: 5
+    }
+  }, yen(mRev), " 売上 ー ", yen(mExp), " 経費")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 8,
+      padding: "0 16px 16px"
+    }
+  }, [["稼働日", `${mDays}日`], ["件数", `${mCnt}件`], ["時間", `${mHrs.toFixed(1)}h`]].map(([l, v]) => /*#__PURE__*/React.createElement("div", {
+    key: l,
+    className: "card",
+    style: {
+      textAlign: "center",
+      padding: "12px 8px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, l), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20,
+      fontWeight: 700
+    }
+  }, v)))), todayRev > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 16px 12px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      borderLeft: "3px solid #FF5722",
+      padding: "12px 16px",
+      borderRadius: "0 14px 14px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "今日"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: 700
+    }
+  }, yen(todayRev)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 1,
+      background: "#2A2D3A",
+      margin: "0 16px"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 16px 6px",
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#6B7280"
+    }
+  }, "最近の記録"), sessions.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 40,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#6B7280",
+      marginBottom: 16
+    }
+  }, "まだ記録がありません"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-o",
+    onClick: onAdd,
+    style: {
+      width: "auto",
+      padding: "12px 28px"
+    }
+  }, "最初の記録を追加")) : sessions.slice(0, 6).map(s => /*#__PURE__*/React.createElement("div", {
+    key: s.id,
+    style: {
+      padding: "12px 16px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      borderBottom: "1px solid #1C1F2A"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 600
+    }
+  }, toJpDate(s.date)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      background: SVC_CLR[s.service] + "25",
+      color: SVC_CLR[s.service],
+      padding: "2px 8px",
+      borderRadius: 20,
+      fontWeight: 600
+    }
+  }, s.service)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, sessCount(s) ? `${sessCount(s)}件` : "", s.total_time ? `　${s.total_time}h` : "")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700
+    }
+  }, yen(sessTotal(s))))));
 }
 
 // ── AddTab ───────────────────────────────────────────────────────────
-function AddTab({step,setStep,draft,setDraft,err,setErr,extracting,fileRef,onSave}){
-  const [mDate,setMDate]=useState(new Date().toISOString().slice(0,10));
-  const [mSvc,setMSvc]=useState("ロケット");const [mTime,setMTime]=useState("");
-  const [mRows,setMRows]=useState([{id:uid(),time:"",amount:"",distance:"",pick:"",drop:""}]);
-  const addRow=()=>setMRows(p=>[...p,{id:uid(),time:"",amount:"",distance:"",pick:"",drop:""}]);
-  const delRow=id=>setMRows(p=>p.filter(r=>r.id!==id));
-  const upd=(id,f,v)=>setMRows(p=>p.map(r=>r.id===id?{...r,[f]:v}:r));
-  const saveManual=()=>{
-    const dels=mRows.filter(r=>r.amount).map(r=>({id:uid(),time:r.time,amount:parseFloat(r.amount)||0,distance:parseFloat(r.distance)||null,pick:r.pick,drop:r.drop,memo:""}));
-    if(!dels.length){setErr("金額を1件以上入力してください");return}
-    onSave({id:uid(),date:mDate,service:mSvc,total_time:parseFloat(mTime)||0,memo:"",deliveries:dels});
+function AddTab({
+  step,
+  setStep,
+  draft,
+  setDraft,
+  err,
+  setErr,
+  extracting,
+  fileRef,
+  onSave
+}) {
+  const [mDate, setMDate] = useState(new Date().toISOString().slice(0, 10));
+  const [mSvc, setMSvc] = useState("ロケット");
+  const [mTime, setMTime] = useState("");
+  const [mRows, setMRows] = useState([{
+    id: uid(),
+    time: "",
+    amount: "",
+    distance: "",
+    pick: "",
+    drop: ""
+  }]);
+  const addRow = () => setMRows(p => [...p, {
+    id: uid(),
+    time: "",
+    amount: "",
+    distance: "",
+    pick: "",
+    drop: ""
+  }]);
+  const delRow = id => setMRows(p => p.filter(r => r.id !== id));
+  const upd = (id, f, v) => setMRows(p => p.map(r => r.id === id ? {
+    ...r,
+    [f]: v
+  } : r));
+  const saveManual = () => {
+    const dels = mRows.filter(r => r.amount).map(r => ({
+      id: uid(),
+      time: r.time,
+      amount: parseFloat(r.amount) || 0,
+      distance: parseFloat(r.distance) || null,
+      pick: r.pick,
+      drop: r.drop,
+      memo: ""
+    }));
+    if (!dels.length) {
+      setErr("金額を1件以上入力してください");
+      return;
+    }
+    onSave({
+      id: uid(),
+      date: mDate,
+      service: mSvc,
+      total_time: parseFloat(mTime) || 0,
+      memo: "",
+      deliveries: dels
+    });
   };
-  if(step==="confirm"&&draft)return<ConfirmScreen draft={draft} setDraft={setDraft} onSave={onSave} onBack={()=>setStep("pick")}/>;
-  if(step==="manual")return(
-    <div style={{padding:16}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-        <button className="btn btn-g" onClick={()=>setStep("pick")} style={{width:"auto",padding:"8px 14px"}}>←</button>
-        <div style={{fontSize:18,fontWeight:700}}>手入力</div>
-      </div>
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
-        <div><div className="lbl">日付</div><input type="date" value={mDate} onChange={e=>setMDate(e.target.value)}/></div>
-        <div><div className="lbl">サービス</div><select value={mSvc} onChange={e=>setMSvc(e.target.value)}>{SERVICES.map(s=><option key={s}>{s}</option>)}</select></div>
-        <div><div className="lbl">稼働時間 (h)</div><input type="number" step=".5" value={mTime} onChange={e=>setMTime(e.target.value)} placeholder="例: 2.5"/></div>
-        <div style={{fontSize:13,fontWeight:700,color:"#6B7280",marginTop:4}}>配達 ({mRows.length}件)</div>
-        {mRows.map((r,i)=>(
-          <div key={r.id} className="card" style={{padding:12}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-              <span style={{fontSize:13,fontWeight:600,color:"#6B7280"}}>#{i+1}</span>
-              {mRows.length>1&&<button onClick={()=>delRow(r.id)} style={{background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:18}}>✕</button>}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-              <div><div className="lbl">時刻</div><input type="time" value={r.time} onChange={e=>upd(r.id,"time",e.target.value)}/></div>
-              <div><div className="lbl">金額 ¥</div><input type="number" value={r.amount} onChange={e=>upd(r.id,"amount",e.target.value)} placeholder="500"/></div>
-            </div>
-            <div style={{marginBottom:8}}><div className="lbl">距離 (km)</div><input type="number" step=".1" value={r.distance} onChange={e=>upd(r.id,"distance",e.target.value)} placeholder="2.5"/></div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              <div><div className="lbl">ピック先</div><input value={r.pick} onChange={e=>upd(r.id,"pick",e.target.value)} placeholder="店舗名"/></div>
-              <div><div className="lbl">ドロップ先</div><input value={r.drop} onChange={e=>upd(r.id,"drop",e.target.value)} placeholder="エリア"/></div>
-            </div>
-          </div>
-        ))}
-        <button className="btn btn-g" onClick={addRow}>＋ 件を追加</button>
-        {err&&<div style={{color:"#FF6B6B",fontSize:13}}>{err}</div>}
-        <button className="btn btn-o" onClick={saveManual}>保存する</button>
-      </div>
-    </div>
-  );
-  return(
-    <div style={{padding:20}}>
-      <div style={{fontSize:20,fontWeight:700,marginBottom:20}}>記録を追加</div>
-      {err&&<div style={{background:"#2A1515",color:"#FF6B6B",padding:12,borderRadius:10,marginBottom:16,fontSize:14}}>{err}</div>}
-      {extracting?(
-        <div style={{textAlign:"center",padding:"50px 0",color:"#6B7280"}}>
-          <div style={{fontSize:36,marginBottom:12}}><span className="spin">⟳</span></div>
-          <div>AIが読み取り中...</div>
-        </div>
-      ):(
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <button className="btn btn-o" onClick={()=>fileRef.current?.click()} style={{padding:24,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
-            <span style={{fontSize:32}}>📤</span>
-            <div><div style={{fontSize:16,fontWeight:700}}>スクリーンショットから読み取り</div>
-            <div style={{fontSize:12,fontWeight:400,opacity:.8,marginTop:3}}>実績画面・日次レポートに対応</div></div>
-          </button>
-          <button className="btn btn-g" onClick={()=>setStep("manual")} style={{padding:16}}>手入力で追加</button>
-        </div>
-      )}
-    </div>
-  );
+  if (step === "confirm" && draft) return /*#__PURE__*/React.createElement(ConfirmScreen, {
+    draft: draft,
+    setDraft: setDraft,
+    onSave: onSave,
+    onBack: () => setStep("pick")
+  });
+  if (step === "manual") return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-g",
+    onClick: () => setStep("pick"),
+    style: {
+      width: "auto",
+      padding: "8px 14px"
+    }
+  }, "←"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700
+    }
+  }, "手入力")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "日付"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: mDate,
+    onChange: e => setMDate(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "サービス"), /*#__PURE__*/React.createElement("select", {
+    value: mSvc,
+    onChange: e => setMSvc(e.target.value)
+  }, SERVICES.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s
+  }, s)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "稼働時間 (h)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    step: ".5",
+    value: mTime,
+    onChange: e => setMTime(e.target.value),
+    placeholder: "例: 2.5"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#6B7280",
+      marginTop: 4
+    }
+  }, "配達 (", mRows.length, "件)"), mRows.map((r, i) => /*#__PURE__*/React.createElement("div", {
+    key: r.id,
+    className: "card",
+    style: {
+      padding: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#6B7280"
+    }
+  }, "#", i + 1), mRows.length > 1 && /*#__PURE__*/React.createElement("button", {
+    onClick: () => delRow(r.id),
+    style: {
+      background: "none",
+      border: "none",
+      color: "#6B7280",
+      cursor: "pointer",
+      fontSize: 18
+    }
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "時刻"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: r.time,
+    onChange: e => upd(r.id, "time", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "金額 ¥"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: r.amount,
+    onChange: e => upd(r.id, "amount", e.target.value),
+    placeholder: "500"
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "距離 (km)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    step: ".1",
+    value: r.distance,
+    onChange: e => upd(r.id, "distance", e.target.value),
+    placeholder: "2.5"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "ピック先"), /*#__PURE__*/React.createElement("input", {
+    value: r.pick,
+    onChange: e => upd(r.id, "pick", e.target.value),
+    placeholder: "店舗名"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "ドロップ先"), /*#__PURE__*/React.createElement("input", {
+    value: r.drop,
+    onChange: e => upd(r.id, "drop", e.target.value),
+    placeholder: "エリア"
+  }))))), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-g",
+    onClick: addRow
+  }, "＋ 件を追加"), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#FF6B6B",
+      fontSize: 13
+    }
+  }, err), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-o",
+    onClick: saveManual
+  }, "保存する")));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20,
+      fontWeight: 700,
+      marginBottom: 20
+    }
+  }, "記録を追加"), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#2A1515",
+      color: "#FF6B6B",
+      padding: 12,
+      borderRadius: 10,
+      marginBottom: 16,
+      fontSize: 14
+    }
+  }, err), extracting ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "50px 0",
+      color: "#6B7280"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 36,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "spin"
+  }, "⟳")), /*#__PURE__*/React.createElement("div", null, "AIが読み取り中...")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-o",
+    onClick: () => fileRef.current?.click(),
+    style: {
+      padding: 24,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 32
+    }
+  }, "📤"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700
+    }
+  }, "スクリーンショットから読み取り"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 400,
+      opacity: .8,
+      marginTop: 3
+    }
+  }, "実績画面・日次レポートに対応"))), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-g",
+    onClick: () => setStep("manual"),
+    style: {
+      padding: 16
+    }
+  }, "手入力で追加")));
 }
 
 // ── ConfirmScreen ────────────────────────────────────────────────────
-function ConfirmScreen({draft,setDraft,onSave,onBack}){
-  const upd=(f,v)=>setDraft(d=>({...d,[f]:v}));
-  const updDel=(id,f,v)=>setDraft(d=>({...d,deliveries:d.deliveries.map(x=>x.id===id?{...x,[f]:v}:x)}));
-  const addDel=()=>setDraft(d=>({...d,deliveries:[...d.deliveries,{id:uid(),time:"",amount:0,distance:null,pick:"",drop:"",memo:""}]}));
-  const delDel=id=>setDraft(d=>({...d,deliveries:d.deliveries.filter(x=>x.id!==id)}));
-  const total=draft.deliveries.reduce((a,d)=>a+(parseFloat(d.amount)||0),0);
-  return(
-    <div style={{padding:16}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-        <button className="btn btn-g" onClick={onBack} style={{width:"auto",padding:"8px 14px"}}>←</button>
-        <div style={{fontSize:18,fontWeight:700}}>内容を確認・修正</div>
-      </div>
-      <div className="card" style={{borderLeft:"3px solid #FF5722",marginBottom:16,padding:"14px 16px",borderRadius:"0 14px 14px 0"}}>
-        <div className="lbl">読み取り合計</div>
-        <div style={{fontSize:30,fontWeight:800}}>{yen(total)}</div>
-        <div style={{fontSize:12,color:"#6B7280"}}>{draft.deliveries.length}件</div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        <div><div className="lbl">日付</div><input type="date" value={draft.date} onChange={e=>upd("date",e.target.value)}/></div>
-        <div><div className="lbl">サービス</div><select value={draft.service} onChange={e=>upd("service",e.target.value)}>{SERVICES.map(s=><option key={s}>{s}</option>)}</select></div>
-      </div>
-      <div style={{marginBottom:14}}><div className="lbl">稼働時間 (h)</div><input type="number" step=".5" value={draft.total_time||""} onChange={e=>upd("total_time",parseFloat(e.target.value)||0)} placeholder="例: 2.0"/></div>
-      <div style={{fontSize:13,fontWeight:700,color:"#6B7280",marginBottom:10}}>配達詳細</div>
-      {draft.deliveries.map((d,i)=>(
-        <div key={d.id} className="card" style={{marginBottom:10,padding:12}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-            <span style={{fontSize:13,color:"#6B7280"}}>#{i+1}　{d.time}</span>
-            <div style={{display:"flex",gap:10,alignItems:"center"}}>
-              <span style={{fontWeight:700}}>{yen(d.amount)}</span>
-              <button onClick={()=>delDel(d.id)} style={{background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:16}}>✕</button>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-            <div><div className="lbl">金額</div><input type="number" value={d.amount} onChange={e=>updDel(d.id,"amount",parseFloat(e.target.value)||0)}/></div>
-            <div><div className="lbl">距離 km</div><input type="number" step=".1" value={d.distance||""} onChange={e=>updDel(d.id,"distance",parseFloat(e.target.value)||null)}/></div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <div><div className="lbl">ピック先</div><input value={d.pick} onChange={e=>updDel(d.id,"pick",e.target.value)}/></div>
-            <div><div className="lbl">ドロップ先</div><input value={d.drop} onChange={e=>updDel(d.id,"drop",e.target.value)}/></div>
-          </div>
-        </div>
-      ))}
-      <button className="btn btn-g" onClick={addDel} style={{marginBottom:12}}>＋ 件を追加</button>
-      <button className="btn btn-o" onClick={()=>onSave(draft)}>保存する</button>
-    </div>
-  );
+function ConfirmScreen({
+  draft,
+  setDraft,
+  onSave,
+  onBack
+}) {
+  const upd = (f, v) => setDraft(d => ({
+    ...d,
+    [f]: v
+  }));
+  const updDel = (id, f, v) => setDraft(d => ({
+    ...d,
+    deliveries: d.deliveries.map(x => x.id === id ? {
+      ...x,
+      [f]: v
+    } : x)
+  }));
+  const addDel = () => setDraft(d => ({
+    ...d,
+    deliveries: [...d.deliveries, {
+      id: uid(),
+      time: "",
+      amount: 0,
+      distance: null,
+      pick: "",
+      drop: "",
+      memo: ""
+    }]
+  }));
+  const delDel = id => setDraft(d => ({
+    ...d,
+    deliveries: d.deliveries.filter(x => x.id !== id)
+  }));
+  const total = draft.deliveries.reduce((a, d) => a + (parseFloat(d.amount) || 0), 0);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-g",
+    onClick: onBack,
+    style: {
+      width: "auto",
+      padding: "8px 14px"
+    }
+  }, "←"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700
+    }
+  }, "内容を確認・修正")), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      borderLeft: "3px solid #FF5722",
+      marginBottom: 16,
+      padding: "14px 16px",
+      borderRadius: "0 14px 14px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "読み取り合計"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 30,
+      fontWeight: 800
+    }
+  }, yen(total)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, draft.deliveries.length, "件")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "日付"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: draft.date,
+    onChange: e => upd("date", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "サービス"), /*#__PURE__*/React.createElement("select", {
+    value: draft.service,
+    onChange: e => upd("service", e.target.value)
+  }, SERVICES.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s
+  }, s))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "稼働時間 (h)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    step: ".5",
+    value: draft.total_time || "",
+    onChange: e => upd("total_time", parseFloat(e.target.value) || 0),
+    placeholder: "例: 2.0"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#6B7280",
+      marginBottom: 10
+    }
+  }, "配達詳細"), draft.deliveries.map((d, i) => /*#__PURE__*/React.createElement("div", {
+    key: d.id,
+    className: "card",
+    style: {
+      marginBottom: 10,
+      padding: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: "#6B7280"
+    }
+  }, "#", i + 1, "\u3000", d.time), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700
+    }
+  }, yen(d.amount)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => delDel(d.id),
+    style: {
+      background: "none",
+      border: "none",
+      color: "#6B7280",
+      cursor: "pointer",
+      fontSize: 16
+    }
+  }, "✕"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "金額"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: d.amount,
+    onChange: e => updDel(d.id, "amount", parseFloat(e.target.value) || 0)
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "距離 km"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    step: ".1",
+    value: d.distance || "",
+    onChange: e => updDel(d.id, "distance", parseFloat(e.target.value) || null)
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "ピック先"), /*#__PURE__*/React.createElement("input", {
+    value: d.pick,
+    onChange: e => updDel(d.id, "pick", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "ドロップ先"), /*#__PURE__*/React.createElement("input", {
+    value: d.drop,
+    onChange: e => updDel(d.id, "drop", e.target.value)
+  }))))), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-g",
+    onClick: addDel,
+    style: {
+      marginBottom: 12
+    }
+  }, "＋ 件を追加"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-o",
+    onClick: () => onSave(draft)
+  }, "保存する"));
 }
 
 // ── LogTab ───────────────────────────────────────────────────────────
-function LogTab({sessions,openId,setOpenId,onDelete}){
-  const [mode,setMode]=useState("session");
-  const byMonth={};
-  sessions.forEach(s=>{const m=s.date.slice(0,7);if(!byMonth[m])byMonth[m]=[];byMonth[m].push(s);});
-  return(
-    <div>
-      <div style={{padding:"20px 16px 12px",fontSize:20,fontWeight:700}}>配達記録</div>
-      <div style={{padding:"0 16px 12px",display:"flex",gap:8}}>
-        {[["session","セッション別"],["daily","日次まとめ"]].map(([m,l])=>(
-          <button key={m} onClick={()=>{setMode(m);setOpenId(null);}} style={{flex:1,padding:"8px",border:"1px solid",borderRadius:10,cursor:"pointer",background:mode===m?"#FF5722":"#1C1F2A",color:mode===m?"#fff":"#6B7280",borderColor:mode===m?"#FF5722":"#2A2D3A",fontFamily:"inherit",fontSize:13,fontWeight:600}}>{l}</button>
-        ))}
-      </div>
-      {Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).map(m=>(
-        <div key={m}>
-          <div style={{padding:"8px 16px",fontSize:12,fontWeight:700,color:"#6B7280",background:"#0F1117",position:"sticky",top:0,zIndex:5}}>
-            {toMonthLabel(m)}　計 {yen(byMonth[m].reduce((a,s)=>a+sessTotal(s),0))}
-          </div>
-          {mode==="session"
-            ?byMonth[m].map(s=><SessCard key={s.id} s={s} open={openId===s.id} onToggle={()=>setOpenId(openId===s.id?null:s.id)} onDelete={onDelete}/>)
-            :<DayGroup sessions={byMonth[m]} openId={openId} setOpenId={setOpenId} onDelete={onDelete}/>}
-        </div>
-      ))}
-      {!sessions.length&&<div style={{padding:40,textAlign:"center",color:"#6B7280"}}>記録なし</div>}
-    </div>
-  );
+function LogTab({
+  sessions,
+  openId,
+  setOpenId,
+  onDelete
+}) {
+  const [mode, setMode] = useState("session");
+  const byMonth = {};
+  sessions.forEach(s => {
+    const m = s.date.slice(0, 7);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(s);
+  });
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "20px 16px 12px",
+      fontSize: 20,
+      fontWeight: 700
+    }
+  }, "配達記録"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 16px 12px",
+      display: "flex",
+      gap: 8
+    }
+  }, [["session", "セッション別"], ["daily", "日次まとめ"]].map(([m, l]) => /*#__PURE__*/React.createElement("button", {
+    key: m,
+    onClick: () => {
+      setMode(m);
+      setOpenId(null);
+    },
+    style: {
+      flex: 1,
+      padding: "8px",
+      border: "1px solid",
+      borderRadius: 10,
+      cursor: "pointer",
+      background: mode === m ? "#FF5722" : "#1C1F2A",
+      color: mode === m ? "#fff" : "#6B7280",
+      borderColor: mode === m ? "#FF5722" : "#2A2D3A",
+      fontFamily: "inherit",
+      fontSize: 13,
+      fontWeight: 600
+    }
+  }, l))), Object.keys(byMonth).sort((a, b) => b.localeCompare(a)).map(m => /*#__PURE__*/React.createElement("div", {
+    key: m
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "8px 16px",
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#6B7280",
+      background: "#0F1117",
+      position: "sticky",
+      top: 0,
+      zIndex: 5
+    }
+  }, toMonthLabel(m), "\u3000計 ", yen(byMonth[m].reduce((a, s) => a + sessTotal(s), 0))), mode === "session" ? byMonth[m].map(s => /*#__PURE__*/React.createElement(SessCard, {
+    key: s.id,
+    s: s,
+    open: openId === s.id,
+    onToggle: () => setOpenId(openId === s.id ? null : s.id),
+    onDelete: onDelete
+  })) : /*#__PURE__*/React.createElement(DayGroup, {
+    sessions: byMonth[m],
+    openId: openId,
+    setOpenId: setOpenId,
+    onDelete: onDelete
+  }))), !sessions.length && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 40,
+      textAlign: "center",
+      color: "#6B7280"
+    }
+  }, "記録なし"));
 }
-
-function SessCard({s,open,onToggle,onDelete}){
-  const total=sessTotal(s);const cnt=sessCount(s);const dist=sessDist(s);
-  const hasDetail=s.deliveries.some(d=>!d._agg);const color=SVC_CLR[s.service];
-  return(
-    <div style={{borderBottom:"1px solid #2A2D3A"}}>
-      <div onClick={onToggle} style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-            <span style={{fontSize:14,fontWeight:600}}>{toJpDate(s.date)}</span>
-            <span style={{fontSize:11,background:color+"25",color,padding:"2px 8px",borderRadius:20,fontWeight:600}}>{s.service}</span>
-          </div>
-          <div style={{fontSize:12,color:"#6B7280"}}>{cnt?`${cnt}件`:""}{s.total_time?`　${s.total_time}h`:""}{dist?`　${dist.toFixed(1)}km`:""}</div>
-        </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{fontSize:18,fontWeight:700}}>{yen(total)}</div>
-          {s.total_time?<div style={{fontSize:11,color:"#6B7280"}}>{yen(Math.round(total/s.total_time))}/h</div>:null}
-        </div>
-        <span style={{color:"#6B7280",fontSize:14}}>{open?"▾":"›"}</span>
-      </div>
-      {open&&(
-        <div style={{background:"#0D1018",padding:"0 16px 16px"}}>
-          {hasDetail?(
-            <div style={{paddingTop:12}}>
-              {s.deliveries.map((d,i)=>(
-                <div key={d.id} style={{display:"flex",gap:12,paddingBottom:i<s.deliveries.length-1?16:0,position:"relative"}}>
-                  {i<s.deliveries.length-1&&<div style={{position:"absolute",left:4,top:14,bottom:0,width:2,background:"#2A2D3A"}}/>}
-                  <div style={{width:10,height:10,borderRadius:"50%",background:color,marginTop:5,flexShrink:0}}/>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",justifyContent:"space-between"}}>
-                      <div>
-                        <div style={{fontSize:12,color:"#6B7280"}}>{d.time}</div>
-                        <div style={{fontSize:14,fontWeight:600,marginTop:2}}>{d.pick||"—"}</div>
-                        {d.drop&&<div style={{fontSize:12,color:"#6B7280",marginTop:2}}>→ {d.drop}</div>}
-                        {d.distance&&<div style={{fontSize:11,color:"#6B7280"}}>{d.distance}km</div>}
-                      </div>
-                      <div style={{fontWeight:700,fontSize:15}}>{yen(d.amount)}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ):<div style={{paddingTop:12,fontSize:13,color:"#6B7280"}}>{s.memo||s.deliveries[0]?.drop||""}</div>}
-          {s.memo&&hasDetail&&<div style={{fontSize:12,color:"#6B7280",marginTop:12,paddingTop:12,borderTop:"1px solid #2A2D3A"}}>{s.memo}</div>}
-          <button className="btn btn-d" onClick={()=>onDelete(s.id)} style={{marginTop:14,padding:10}}>
-            <span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>🗑 削除</span>
-          </button>
-        </div>
-      )}
-    </div>
-  );
+function SessCard({
+  s,
+  open,
+  onToggle,
+  onDelete
+}) {
+  const total = sessTotal(s);
+  const cnt = sessCount(s);
+  const dist = sessDist(s);
+  const hasDetail = s.deliveries.some(d => !d._agg);
+  const color = SVC_CLR[s.service];
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderBottom: "1px solid #2A2D3A"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: onToggle,
+    style: {
+      padding: "12px 16px",
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 600
+    }
+  }, toJpDate(s.date)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      background: color + "25",
+      color,
+      padding: "2px 8px",
+      borderRadius: 20,
+      fontWeight: 600
+    }
+  }, s.service)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, cnt ? `${cnt}件` : "", s.total_time ? `　${s.total_time}h` : "", dist ? `　${dist.toFixed(1)}km` : "")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700
+    }
+  }, yen(total)), s.total_time ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280"
+    }
+  }, yen(Math.round(total / s.total_time)), "/h") : null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#6B7280",
+      fontSize: 14
+    }
+  }, open ? "▾" : "›")), open && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#0D1018",
+      padding: "0 16px 16px"
+    }
+  }, hasDetail ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      paddingTop: 12
+    }
+  }, s.deliveries.map((d, i) => /*#__PURE__*/React.createElement("div", {
+    key: d.id,
+    style: {
+      display: "flex",
+      gap: 12,
+      paddingBottom: i < s.deliveries.length - 1 ? 16 : 0,
+      position: "relative"
+    }
+  }, i < s.deliveries.length - 1 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      left: 4,
+      top: 14,
+      bottom: 0,
+      width: 2,
+      background: "#2A2D3A"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 10,
+      height: 10,
+      borderRadius: "50%",
+      background: color,
+      marginTop: 5,
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, d.time), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 600,
+      marginTop: 2
+    }
+  }, d.pick || "—"), d.drop && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280",
+      marginTop: 2
+    }
+  }, "→ ", d.drop), d.distance && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280"
+    }
+  }, d.distance, "km")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 15
+    }
+  }, yen(d.amount))))))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      paddingTop: 12,
+      fontSize: 13,
+      color: "#6B7280"
+    }
+  }, s.memo || s.deliveries[0]?.drop || ""), s.memo && hasDetail && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280",
+      marginTop: 12,
+      paddingTop: 12,
+      borderTop: "1px solid #2A2D3A"
+    }
+  }, s.memo), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-d",
+    onClick: () => onDelete(s.id),
+    style: {
+      marginTop: 14,
+      padding: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8
+    }
+  }, "🗑 削除"))));
 }
-
-function DayGroup({sessions,openId,setOpenId,onDelete}){
-  const byDate={};
-  sessions.forEach(s=>{if(!byDate[s.date])byDate[s.date]=[];byDate[s.date].push(s);});
-  return(
-    <>
-      {Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).map(date=>{
-        const ss=byDate[date];
-        const dayTotal=ss.reduce((a,s)=>a+sessTotal(s),0);
-        const dayCount=ss.reduce((a,s)=>a+(sessCount(s)||0),0);
-        const dayHours=ss.reduce((a,s)=>a+(s.total_time||0),0);
-        const dayDist=ss.reduce((a,s)=>a+(sessDist(s)||0),0);
-        const key=`day_${date}`;const isOpen=openId===key;
-        return(
-          <div key={date} style={{borderBottom:"1px solid #2A2D3A"}}>
-            <div onClick={()=>setOpenId(isOpen?null:key)} style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:6,marginBottom:4}}>
-                  <span style={{fontSize:14,fontWeight:600}}>{toJpDate(date)}</span>
-                  {ss.map(s=><span key={s.id} style={{fontSize:11,background:SVC_CLR[s.service]+"25",color:SVC_CLR[s.service],padding:"2px 8px",borderRadius:20,fontWeight:600}}>{s.service}</span>)}
-                </div>
-                <div style={{fontSize:12,color:"#6B7280"}}>{dayCount?`${dayCount}件`:""}{dayHours?`　${dayHours.toFixed(1)}h`:""}{dayDist?`　${dayDist.toFixed(1)}km`:""}</div>
-              </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:18,fontWeight:700}}>{yen(dayTotal)}</div>
-                {dayHours?<div style={{fontSize:11,color:"#6B7280"}}>{yen(Math.round(dayTotal/dayHours))}/h</div>:null}
-              </div>
-              <span style={{color:"#6B7280",fontSize:14}}>{isOpen?"▾":"›"}</span>
-            </div>
-            {isOpen&&(
-              <div style={{background:"#0D1018",paddingBottom:8}}>
-                {ss.map(s=>(
-                  <div key={s.id}>
-                    <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #1C1F2A"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{width:8,height:8,borderRadius:"50%",background:SVC_CLR[s.service],display:"inline-block",flexShrink:0}}/>
-                        <div>
-                          <span style={{fontSize:13,fontWeight:600}}>{s.service}</span>
-                          <span style={{fontSize:12,color:"#6B7280",marginLeft:8}}>{sessCount(s)?`${sessCount(s)}件`:""}{s.total_time?` ${s.total_time}h`:""}</span>
-                        </div>
-                      </div>
-                      <span style={{fontWeight:700}}>{yen(sessTotal(s))}</span>
-                    </div>
-                    {s.deliveries.some(d=>!d._agg)&&(
-                      <div style={{padding:"4px 16px 8px 36px"}}>
-                        {s.deliveries.map((d,i)=>(
-                          <div key={d.id} style={{display:"flex",gap:8,paddingBottom:i<s.deliveries.length-1?8:0,position:"relative"}}>
-                            {i<s.deliveries.length-1&&<div style={{position:"absolute",left:3,top:11,bottom:0,width:2,background:"#2A2D3A"}}/>}
-                            <div style={{width:8,height:8,borderRadius:"50%",background:SVC_CLR[s.service],marginTop:4,flexShrink:0}}/>
-                            <div style={{flex:1,display:"flex",justifyContent:"space-between"}}>
-                              <div style={{fontSize:12}}>
-                                <span style={{color:"#6B7280"}}>{d.time}　</span><span>{d.pick}</span>
-                                {d.drop&&<span style={{color:"#6B7280"}}> → {d.drop}</span>}
-                                {d.distance&&<span style={{color:"#6B7280",fontSize:11}}> {d.distance}km</span>}
-                              </div>
-                              <span style={{fontSize:12,fontWeight:700,flexShrink:0,marginLeft:8}}>{yen(d.amount)}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div style={{padding:"8px 16px 4px"}}>
-                  <button className="btn btn-d" onClick={()=>ss.forEach(s=>onDelete(s.id))} style={{padding:10}}>
-                    <span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>🗑 この日の記録を削除</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </>
-  );
+function DayGroup({
+  sessions,
+  openId,
+  setOpenId,
+  onDelete
+}) {
+  const byDate = {};
+  sessions.forEach(s => {
+    if (!byDate[s.date]) byDate[s.date] = [];
+    byDate[s.date].push(s);
+  });
+  return /*#__PURE__*/React.createElement(React.Fragment, null, Object.keys(byDate).sort((a, b) => b.localeCompare(a)).map(date => {
+    const ss = byDate[date];
+    const dayTotal = ss.reduce((a, s) => a + sessTotal(s), 0);
+    const dayCount = ss.reduce((a, s) => a + (sessCount(s) || 0), 0);
+    const dayHours = ss.reduce((a, s) => a + (s.total_time || 0), 0);
+    const dayDist = ss.reduce((a, s) => a + (sessDist(s) || 0), 0);
+    const key = `day_${date}`;
+    const isOpen = openId === key;
+    return /*#__PURE__*/React.createElement("div", {
+      key: date,
+      style: {
+        borderBottom: "1px solid #2A2D3A"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      onClick: () => setOpenId(isOpen ? null : key),
+      style: {
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        cursor: "pointer"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 6,
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        fontWeight: 600
+      }
+    }, toJpDate(date)), ss.map(s => /*#__PURE__*/React.createElement("span", {
+      key: s.id,
+      style: {
+        fontSize: 11,
+        background: SVC_CLR[s.service] + "25",
+        color: SVC_CLR[s.service],
+        padding: "2px 8px",
+        borderRadius: 20,
+        fontWeight: 600
+      }
+    }, s.service))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#6B7280"
+      }
+    }, dayCount ? `${dayCount}件` : "", dayHours ? `　${dayHours.toFixed(1)}h` : "", dayDist ? `　${dayDist.toFixed(1)}km` : "")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700
+      }
+    }, yen(dayTotal)), dayHours ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#6B7280"
+      }
+    }, yen(Math.round(dayTotal / dayHours)), "/h") : null), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#6B7280",
+        fontSize: 14
+      }
+    }, isOpen ? "▾" : "›")), isOpen && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#0D1018",
+        paddingBottom: 8
+      }
+    }, ss.map(s => /*#__PURE__*/React.createElement("div", {
+      key: s.id
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "10px 16px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderTop: "1px solid #1C1F2A"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        background: SVC_CLR[s.service],
+        display: "inline-block",
+        flexShrink: 0
+      }
+    }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600
+      }
+    }, s.service), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: "#6B7280",
+        marginLeft: 8
+      }
+    }, sessCount(s) ? `${sessCount(s)}件` : "", s.total_time ? ` ${s.total_time}h` : ""))), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700
+      }
+    }, yen(sessTotal(s)))), s.deliveries.some(d => !d._agg) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "4px 16px 8px 36px"
+      }
+    }, s.deliveries.map((d, i) => /*#__PURE__*/React.createElement("div", {
+      key: d.id,
+      style: {
+        display: "flex",
+        gap: 8,
+        paddingBottom: i < s.deliveries.length - 1 ? 8 : 0,
+        position: "relative"
+      }
+    }, i < s.deliveries.length - 1 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        left: 3,
+        top: 11,
+        bottom: 0,
+        width: 2,
+        background: "#2A2D3A"
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        background: SVC_CLR[s.service],
+        marginTop: 4,
+        flexShrink: 0
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        display: "flex",
+        justifyContent: "space-between"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#6B7280"
+      }
+    }, d.time, "\u3000"), /*#__PURE__*/React.createElement("span", null, d.pick), d.drop && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#6B7280"
+      }
+    }, " → ", d.drop), d.distance && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#6B7280",
+        fontSize: 11
+      }
+    }, " ", d.distance, "km")), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        flexShrink: 0,
+        marginLeft: 8
+      }
+    }, yen(d.amount)))))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "8px 16px 4px"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-d",
+      onClick: () => ss.forEach(s => onDelete(s.id)),
+      style: {
+        padding: 10
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8
+      }
+    }, "🗑 この日の記録を削除")))));
+  }));
 }
 
 // ── AnalysisTab ──────────────────────────────────────────────────────
-function AnalysisTab({sessions,expenses,setExpenses}){
-  const [editMonth,setEditMonth]=useState(null);const [expInput,setExpInput]=useState("");
-  const [showSettings,setShowSettings]=useState(false);
-  const [newAK,setNewAK]=useState("");const [saved,setSaved]=useState(false);
-
-  const mData={};
-  sessions.forEach(s=>{const m=s.date.slice(0,7);if(!mData[m])mData[m]={revenue:0,hours:0,count:0,days:new Set()};mData[m].revenue+=sessTotal(s);mData[m].hours+=(s.total_time||0);mData[m].count+=(sessCount(s)||0);mData[m].days.add(s.date);});
-  const monthArr=Object.entries(mData).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>({key:k,label:`${parseInt(k.slice(5))}月`,revenue:v.revenue,exp:expenses[k]||0,profit:v.revenue-(expenses[k]||0),hours:v.hours,count:v.count,days:v.days.size}));
-  const maxRev=Math.max(...monthArr.map(m=>m.revenue),1);
-
-  const svcs={};
-  sessions.forEach(s=>{if(!svcs[s.service])svcs[s.service]={revenue:0,hours:0,count:0};svcs[s.service].revenue+=sessTotal(s);svcs[s.service].hours+=(s.total_time||0);svcs[s.service].count+=(sessCount(s)||0);});
-
-  const areas={};
-  sessions.forEach(s=>s.deliveries.filter(d=>!d._agg&&d.drop).forEach(d=>{const a=d.drop.replace(/[0-9０-９]+丁目.*/,"").trim();if(!areas[a])areas[a]={count:0,total:0,dists:[]};areas[a].count++;areas[a].total+=d.amount;if(d.distance)areas[a].dists.push(d.distance);}));
-  const areaArr=Object.entries(areas).sort(([,a],[,b])=>b.count-a.count).slice(0,8);
-
-  const saveAK=()=>{if(newAK.trim()){localStorage.setItem(LS.AK,newAK.trim());setSaved(true);setTimeout(()=>setSaved(false),2000);}};
-
-  return(
-    <div>
-      <div style={{padding:"20px 16px 16px",fontSize:20,fontWeight:700}}>分析</div>
-
-      {/* Bar chart */}
-      <div style={{padding:"0 16px 16px"}}>
-        <div className="card" style={{padding:16}}>
-          <div className="lbl" style={{marginBottom:12}}>月別売上・利益</div>
-          <div style={{display:"flex",alignItems:"flex-end",gap:6,height:120,padding:"4px 0 0"}}>
-            {monthArr.map((m,i)=>(
-              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                <div style={{position:"relative",width:"100%",height:90}}>
-                  <div style={{position:"absolute",bottom:0,left:0,right:0,height:`${m.revenue/maxRev*90}px`,background:"#FF572230",borderRadius:"3px 3px 0 0"}}/>
-                  <div style={{position:"absolute",bottom:0,left:"20%",right:"20%",height:`${Math.max(m.profit,0)/maxRev*90}px`,background:"#FF5722",borderRadius:"3px 3px 0 0"}}/>
-                </div>
-                <div style={{fontSize:10,color:"#6B7280"}}>{m.label}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:16,marginTop:8,fontSize:11,color:"#6B7280"}}>
-            <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:10,height:10,background:"#FF572230",display:"inline-block",borderRadius:2}}/> 売上</span>
-            <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:10,height:10,background:"#FF5722",display:"inline-block",borderRadius:2}}/> 利益</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Monthly detail */}
-      <div style={{padding:"0 16px 16px"}}>
-        <div className="card" style={{padding:0,overflow:"hidden"}}>
-          <div style={{padding:"12px 16px",fontSize:12,fontWeight:700,color:"#6B7280",borderBottom:"1px solid #2A2D3A"}}>月次明細（経費 ✏️ をタップして編集）</div>
-          {monthArr.map(m=>(
-            <div key={m.key}>
-              <div style={{padding:"12px 16px",borderBottom:editMonth===m.key?"none":"1px solid #2A2D3A"}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                  <span style={{fontWeight:600}}>{toMonthLabel(m.key)}</span>
-                  <span style={{fontWeight:700}}>{yen(m.profit)} <span style={{fontSize:11,fontWeight:400,color:"#6B7280"}}>手取り</span></span>
-                </div>
-                <div style={{display:"flex",gap:16,fontSize:12,color:"#6B7280"}}>
-                  <span>売上 {yen(m.revenue)}</span>
-                  <span style={{color:"#FF5722",cursor:"pointer"}} onClick={()=>{setEditMonth(m.key);setExpInput(m.exp||"");}}>経費 {yen(m.exp)} ✏️</span>
-                </div>
-                <div style={{fontSize:11,color:"#6B7280",marginTop:3}}>{m.days}日稼働　{m.count}件　{m.hours.toFixed(1)}h</div>
-              </div>
-              {editMonth===m.key&&(
-                <div style={{padding:"10px 16px",background:"#0D1018",display:"flex",gap:8,borderBottom:"1px solid #2A2D3A"}}>
-                  <input type="number" value={expInput} onChange={e=>setExpInput(e.target.value)} placeholder="月の経費合計 ¥" style={{flex:1}}/>
-                  <button className="btn btn-o" onClick={()=>{setExpenses(p=>({...p,[m.key]:parseFloat(expInput)||0}));setEditMonth(null);}} style={{width:"auto",padding:"8px 16px"}}>保存</button>
-                  <button className="btn btn-g" onClick={()=>setEditMonth(null)} style={{width:"auto",padding:"8px 12px"}}>×</button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Service */}
-      <div style={{padding:"0 16px 16px"}}>
-        <div className="card" style={{padding:0,overflow:"hidden"}}>
-          <div style={{padding:"12px 16px",fontSize:12,fontWeight:700,color:"#6B7280",borderBottom:"1px solid #2A2D3A"}}>サービス比較</div>
-          {Object.entries(svcs).filter(([,v])=>v.revenue>0).sort(([,a],[,b])=>b.revenue-a.revenue).map(([svc,v])=>(
-            <div key={svc} style={{padding:"12px 16px",borderBottom:"1px solid #2A2D3A",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                  <span style={{width:10,height:10,borderRadius:"50%",background:SVC_CLR[svc],display:"inline-block"}}/>
-                  <span style={{fontWeight:600}}>{svc}</span>
-                </div>
-                <div style={{fontSize:12,color:"#6B7280"}}>{v.hours?`時給 ${yen(Math.round(v.revenue/v.hours))}`:""}{v.count?`　${v.count}件`:""}</div>
-              </div>
-              <div style={{fontWeight:700,fontSize:16}}>{yen(v.revenue)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Area */}
-      {areaArr.length>0&&(
-        <div style={{padding:"0 16px 16px"}}>
-          <div className="card" style={{padding:0,overflow:"hidden"}}>
-            <div style={{padding:"12px 16px",fontSize:12,fontWeight:700,color:"#6B7280",borderBottom:"1px solid #2A2D3A"}}>エリア別 (詳細記録のみ)</div>
-            {areaArr.map(([area,v])=>(
-              <div key={area} style={{padding:"10px 16px",borderBottom:"1px solid #2A2D3A",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontWeight:600,fontSize:13}}>{area}</div>
-                  <div style={{fontSize:12,color:"#6B7280"}}>{v.count}件{v.dists.length?`　平均 ${(v.dists.reduce((a,d)=>a+d,0)/v.dists.length).toFixed(1)}km`:""}</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontWeight:700}}>{yen(v.total)}</div>
-                  <div style={{fontSize:11,color:"#6B7280"}}>{yen(Math.round(v.total/v.count))}/件</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Settings */}
-      <div style={{padding:"0 16px 24px"}}>
-        <button className="btn btn-g" onClick={()=>setShowSettings(p=>!p)} style={{marginBottom:8}}>⚙️ APIキー設定</button>
-        {showSettings&&(
-          <div className="card" style={{padding:16,marginTop:8}}>
-            <div className="lbl">Anthropic APIキー（画像読み取り用）</div>
-            <div style={{display:"flex",gap:8,marginTop:4}}>
-              <input value={newAK} onChange={e=>setNewAK(e.target.value)} placeholder={localStorage.getItem(LS.AK)?"設定済み（変更する場合のみ入力）":"sk-ant-..."} style={{flex:1}}/>
-              <button className="btn btn-o" onClick={saveAK} style={{width:"auto",padding:"10px 16px"}}>{saved?"✓":"保存"}</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+function AnalysisTab({
+  sessions,
+  expenses,
+  setExpenses
+}) {
+  const [editMonth, setEditMonth] = useState(null);
+  const [expInput, setExpInput] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [newAK, setNewAK] = useState("");
+  const [saved, setSaved] = useState(false);
+  const mData = {};
+  sessions.forEach(s => {
+    const m = s.date.slice(0, 7);
+    if (!mData[m]) mData[m] = {
+      revenue: 0,
+      hours: 0,
+      count: 0,
+      days: new Set()
+    };
+    mData[m].revenue += sessTotal(s);
+    mData[m].hours += s.total_time || 0;
+    mData[m].count += sessCount(s) || 0;
+    mData[m].days.add(s.date);
+  });
+  const monthArr = Object.entries(mData).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => ({
+    key: k,
+    label: `${parseInt(k.slice(5))}月`,
+    revenue: v.revenue,
+    exp: expenses[k] || 0,
+    profit: v.revenue - (expenses[k] || 0),
+    hours: v.hours,
+    count: v.count,
+    days: v.days.size
+  }));
+  const maxRev = Math.max(...monthArr.map(m => m.revenue), 1);
+  const svcs = {};
+  sessions.forEach(s => {
+    if (!svcs[s.service]) svcs[s.service] = {
+      revenue: 0,
+      hours: 0,
+      count: 0
+    };
+    svcs[s.service].revenue += sessTotal(s);
+    svcs[s.service].hours += s.total_time || 0;
+    svcs[s.service].count += sessCount(s) || 0;
+  });
+  const areas = {};
+  sessions.forEach(s => s.deliveries.filter(d => !d._agg && d.drop).forEach(d => {
+    const a = d.drop.replace(/[0-9０-９]+丁目.*/, "").trim();
+    if (!areas[a]) areas[a] = {
+      count: 0,
+      total: 0,
+      dists: []
+    };
+    areas[a].count++;
+    areas[a].total += d.amount;
+    if (d.distance) areas[a].dists.push(d.distance);
+  }));
+  const areaArr = Object.entries(areas).sort(([, a], [, b]) => b.count - a.count).slice(0, 8);
+  const saveAK = () => {
+    if (newAK.trim()) {
+      localStorage.setItem(LS.AK, newAK.trim());
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "20px 16px 16px",
+      fontSize: 20,
+      fontWeight: 700
+    }
+  }, "分析"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 16px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl",
+    style: {
+      marginBottom: 12
+    }
+  }, "月別売上・利益"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "flex-end",
+      gap: 6,
+      height: 120,
+      padding: "4px 0 0"
+    }
+  }, monthArr.map((m, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative",
+      width: "100%",
+      height: 90
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: `${m.revenue / maxRev * 90}px`,
+      background: "#FF572230",
+      borderRadius: "3px 3px 0 0"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      bottom: 0,
+      left: "20%",
+      right: "20%",
+      height: `${Math.max(m.profit, 0) / maxRev * 90}px`,
+      background: "#FF5722",
+      borderRadius: "3px 3px 0 0"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#6B7280"
+    }
+  }, m.label)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 16,
+      marginTop: 8,
+      fontSize: 11,
+      color: "#6B7280"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 10,
+      height: 10,
+      background: "#FF572230",
+      display: "inline-block",
+      borderRadius: 2
+    }
+  }), " 売上"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 10,
+      height: 10,
+      background: "#FF5722",
+      display: "inline-block",
+      borderRadius: 2
+    }
+  }), " 利益")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 16px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 0,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#6B7280",
+      borderBottom: "1px solid #2A2D3A"
+    }
+  }, "月次明細（経費 ✏️ をタップして編集）"), monthArr.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.key
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      borderBottom: editMonth === m.key ? "none" : "1px solid #2A2D3A"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: 5
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, toMonthLabel(m.key)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700
+    }
+  }, yen(m.profit), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      fontWeight: 400,
+      color: "#6B7280"
+    }
+  }, "手取り"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 16,
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "売上 ", yen(m.revenue)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#FF5722",
+      cursor: "pointer"
+    },
+    onClick: () => {
+      setEditMonth(m.key);
+      setExpInput(m.exp || "");
+    }
+  }, "経費 ", yen(m.exp), " ✏️")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280",
+      marginTop: 3
+    }
+  }, m.days, "日稼働\u3000", m.count, "件\u3000", m.hours.toFixed(1), "h")), editMonth === m.key && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "10px 16px",
+      background: "#0D1018",
+      display: "flex",
+      gap: 8,
+      borderBottom: "1px solid #2A2D3A"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: expInput,
+    onChange: e => setExpInput(e.target.value),
+    placeholder: "月の経費合計 ¥",
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-o",
+    onClick: () => {
+      setExpenses(p => ({
+        ...p,
+        [m.key]: parseFloat(expInput) || 0
+      }));
+      setEditMonth(null);
+    },
+    style: {
+      width: "auto",
+      padding: "8px 16px"
+    }
+  }, "保存"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-g",
+    onClick: () => setEditMonth(null),
+    style: {
+      width: "auto",
+      padding: "8px 12px"
+    }
+  }, "×")))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 16px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 0,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#6B7280",
+      borderBottom: "1px solid #2A2D3A"
+    }
+  }, "サービス比較"), Object.entries(svcs).filter(([, v]) => v.revenue > 0).sort(([, a], [, b]) => b.revenue - a.revenue).map(([svc, v]) => /*#__PURE__*/React.createElement("div", {
+    key: svc,
+    style: {
+      padding: "12px 16px",
+      borderBottom: "1px solid #2A2D3A",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 10,
+      height: 10,
+      borderRadius: "50%",
+      background: SVC_CLR[svc],
+      display: "inline-block"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, svc)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, v.hours ? `時給 ${yen(Math.round(v.revenue / v.hours))}` : "", v.count ? `　${v.count}件` : "")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 16
+    }
+  }, yen(v.revenue)))))), areaArr.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 16px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 0,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#6B7280",
+      borderBottom: "1px solid #2A2D3A"
+    }
+  }, "エリア別 (詳細記録のみ)"), areaArr.map(([area, v]) => /*#__PURE__*/React.createElement("div", {
+    key: area,
+    style: {
+      padding: "10px 16px",
+      borderBottom: "1px solid #2A2D3A",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 600,
+      fontSize: 13
+    }
+  }, area), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, v.count, "件", v.dists.length ? `　平均 ${(v.dists.reduce((a, d) => a + d, 0) / v.dists.length).toFixed(1)}km` : "")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700
+    }
+  }, yen(v.total)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#6B7280"
+    }
+  }, yen(Math.round(v.total / v.count)), "/件")))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 16px 24px"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-g",
+    onClick: () => setShowSettings(p => !p),
+    style: {
+      marginBottom: 8
+    }
+  }, "⚙️ APIキー設定"), showSettings && /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 16,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "Anthropic APIキー（画像読み取り用）"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 4
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: newAK,
+    onChange: e => setNewAK(e.target.value),
+    placeholder: localStorage.getItem(LS.AK) ? "設定済み（変更する場合のみ入力）" : "sk-ant-...",
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-o",
+    onClick: saveAK,
+    style: {
+      width: "auto",
+      padding: "10px 16px"
+    }
+  }, saved ? "✓" : "保存")))));
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
 </script>
 </body>
 </html>
