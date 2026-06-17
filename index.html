@@ -774,16 +774,35 @@ function HomeTab({
           alignItems: "center",
           marginBottom: multi ? 6 : 0
         }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          flexWrap: "wrap"
+        }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 14,
           fontWeight: 700
         }
-      }, toJpDate(date)), /*#__PURE__*/React.createElement("span", {
+      }, toJpDate(date)), ss.map(s => /*#__PURE__*/React.createElement("span", {
+        key: s.id,
+        style: {
+          fontSize: 11,
+          background: SVC_CLR[s.service] + "20",
+          color: SVC_CLR[s.service],
+          padding: "2px 8px",
+          borderRadius: 20,
+          fontWeight: 600
+        }
+      }, s.service))), /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: multi ? 13 : 18,
           fontWeight: 700,
-          color: multi ? "#9CA3AF" : "#111827"
+          color: multi ? "#9CA3AF" : "#111827",
+          flexShrink: 0,
+          marginLeft: 8
         }
       }, multi ? `計 ${yen(dayTotal)}` : yen(dayTotal))), multi && ss.map((s, i) => /*#__PURE__*/React.createElement("div", {
         key: s.id,
@@ -1775,6 +1794,7 @@ function AnalysisTab({
   const [showSettings, setShowSettings] = useState(false);
   const [newAK, setNewAK] = useState("");
   const [saved, setSaved] = useState(false);
+  const currentAK = localStorage.getItem("drv_akey") || "";
   const mData = {};
   sessions.forEach(s => {
     const m = s.date.slice(0, 7);
@@ -1826,9 +1846,9 @@ function AnalysisTab({
   const areaArr = Object.entries(areas).sort(([, a], [, b]) => b.count - a.count).slice(0, 8);
   const saveAK = () => {
     if (newAK.trim()) {
-      localStorage.setItem(LS.AK, newAK.trim());
+      localStorage.setItem("drv_akey", newAK.trim());
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setSaved(false), 3000);
     }
   };
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -2162,7 +2182,14 @@ function AnalysisTab({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "Anthropic APIキー（画像読み取り用）"), /*#__PURE__*/React.createElement("div", {
+  }, "Anthropic APIキー（画像読み取り用）"), currentAK && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#10B981",
+      fontWeight: 600,
+      marginBottom: 8
+    }
+  }, "✓ 設定済み"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -2171,7 +2198,7 @@ function AnalysisTab({
   }, /*#__PURE__*/React.createElement("input", {
     value: newAK,
     onChange: e => setNewAK(e.target.value),
-    placeholder: localStorage.getItem(LS.AK) ? "設定済み（変更する場合のみ入力）" : "sk-ant-...",
+    placeholder: currentAK ? "変更する場合のみ入力" : "sk-ant-...",
     style: {
       flex: 1
     }
@@ -2180,9 +2207,16 @@ function AnalysisTab({
     onClick: saveAK,
     style: {
       width: "auto",
-      padding: "10px 16px"
+      padding: "10px 16px",
+      whiteSpace: "nowrap"
     }
-  }, saved ? "✓" : "保存")))));
+  }, saved ? "✓ 保存済み" : "保存")), !currentAK && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#9CA3AF",
+      marginTop: 6
+    }
+  }, "未入力の場合、画像読み取りは使えません"))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
 </script>
