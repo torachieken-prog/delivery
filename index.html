@@ -8,17 +8,17 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0F1117;color:#E8EAF0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+body{background:#F7F8FA;color:#111827;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
 ::-webkit-scrollbar{display:none}
-.card{background:#1C1F2A;border-radius:14px;border:1px solid #2A2D3A}
-.lbl{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-input,select{background:#1C1F2A;color:#E8EAF0;border:1px solid #2A2D3A;border-radius:10px;padding:10px 13px;font-size:15px;width:100%;outline:none;font-family:inherit}
+.card{background:#FFFFFF;border-radius:14px;border:1px solid #E5E7EB;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.lbl{font-size:11px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+input,select{background:#FFFFFF;color:#111827;border:1px solid #D1D5DB;border-radius:10px;padding:10px 13px;font-size:15px;width:100%;outline:none;font-family:inherit}
 input:focus,select:focus{border-color:#FF5722}
 .btn{border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
 .btn:active{opacity:.8}
 .btn-o{background:#FF5722;color:#fff}
-.btn-g{background:#1C1F2A;color:#E8EAF0;border:1px solid #2A2D3A}
-.btn-d{background:#2A1515;color:#FF6B6B;border:1px solid #3A2222}
+.btn-g{background:#F3F4F6;color:#374151;border:1px solid #D1D5DB}
+.btn-d{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 #root{max-width:520px;margin:0 auto;min-height:100vh}
@@ -383,8 +383,8 @@ function SetupScreen({
     }
   }, "未入力の場合、画像読み取りは使えません")), err && /*#__PURE__*/React.createElement("div", {
     style: {
-      background: "#2A1515",
-      color: "#FF6B6B",
+      background: "#FEF2F2",
+      color: "#DC2626",
       padding: 12,
       borderRadius: 10,
       fontSize: 13,
@@ -546,9 +546,9 @@ function App() {
   };
   return /*#__PURE__*/React.createElement("div", {
     style: {
-      background: "#0F1117",
+      background: "#F7F8FA",
       minHeight: "100vh",
-      color: "#E8EAF0",
+      color: "#111827",
       paddingBottom: 80
     }
   }, status && /*#__PURE__*/React.createElement("div", {
@@ -557,7 +557,7 @@ function App() {
       top: 0,
       left: "50%",
       transform: "translateX(-50%)",
-      background: status === "error" ? "#CC2222" : "#1C1F2A",
+      background: status === "error" ? "#CC2222" : "#FFFFFF",
       color: status === "error" ? "#fff" : "#6B7280",
       padding: "5px 16px",
       borderRadius: "0 0 10px 10px",
@@ -597,7 +597,7 @@ function App() {
       transform: "translateX(-50%)",
       width: "100%",
       maxWidth: 520,
-      background: "#0F1117",
+      background: "#F7F8FA",
       borderTop: "1px solid #2A2D3A",
       display: "flex",
       zIndex: 100,
@@ -722,7 +722,7 @@ function HomeTab({
   }, yen(todayRev)))), /*#__PURE__*/React.createElement("div", {
     style: {
       height: 1,
-      background: "#2A2D3A",
+      background: "#E5E7EB",
       margin: "0 16px"
     }
   }), /*#__PURE__*/React.createElement("div", {
@@ -749,47 +749,62 @@ function HomeTab({
       width: "auto",
       padding: "12px 28px"
     }
-  }, "最初の記録を追加")) : sessions.slice(0, 6).map(s => /*#__PURE__*/React.createElement("div", {
-    key: s.id,
-    style: {
-      padding: "12px 16px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      borderBottom: "1px solid #1C1F2A"
-    }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      marginBottom: 3
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 14,
-      fontWeight: 600
-    }
-  }, toJpDate(s.date)), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 11,
-      background: SVC_CLR[s.service] + "25",
-      color: SVC_CLR[s.service],
-      padding: "2px 8px",
-      borderRadius: 20,
-      fontWeight: 600
-    }
-  }, s.service)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: "#6B7280"
-    }
-  }, sessCount(s) ? `${sessCount(s)}件` : "", s.total_time ? `　${s.total_time}h` : "")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 18,
-      fontWeight: 700
-    }
-  }, yen(sessTotal(s))))));
+  }, "最初の記録を追加")) : (() => {
+    const byDate = {};
+    sessions.slice(0, 20).forEach(s => {
+      if (!byDate[s.date]) byDate[s.date] = [];
+      byDate[s.date].push(s);
+    });
+    return Object.keys(byDate).sort((a, b) => b.localeCompare(a)).slice(0, 6).map(date => {
+      const ss = byDate[date];
+      const dayTotal = ss.reduce((a, s) => a + sessTotal(s), 0);
+      const dayCount = ss.reduce((a, s) => a + (sessCount(s) || 0), 0);
+      const dayHours = ss.reduce((a, s) => a + (s.total_time || 0), 0);
+      return /*#__PURE__*/React.createElement("div", {
+        key: date,
+        style: {
+          padding: "12px 16px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderBottom: "1px solid #E5E7EB"
+        }
+      }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 6,
+          marginBottom: 3
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 14,
+          fontWeight: 600
+        }
+      }, toJpDate(date)), ss.map(s => /*#__PURE__*/React.createElement("span", {
+        key: s.id,
+        style: {
+          fontSize: 11,
+          background: SVC_CLR[s.service] + "25",
+          color: SVC_CLR[s.service],
+          padding: "2px 8px",
+          borderRadius: 20,
+          fontWeight: 600
+        }
+      }, s.service))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: "#6B7280"
+        }
+      }, dayCount ? `${dayCount}件` : "", dayHours ? `　${dayHours.toFixed(1)}h` : "")), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 18,
+          fontWeight: 700
+        }
+      }, yen(dayTotal)));
+    });
+  })());
 }
 
 // ── AddTab ───────────────────────────────────────────────────────────
@@ -996,7 +1011,7 @@ function AddTab({
     onClick: addRow
   }, "＋ 件を追加"), err && /*#__PURE__*/React.createElement("div", {
     style: {
-      color: "#FF6B6B",
+      color: "#DC2626",
       fontSize: 13
     }
   }, err), /*#__PURE__*/React.createElement("button", {
@@ -1015,8 +1030,8 @@ function AddTab({
     }
   }, "記録を追加"), err && /*#__PURE__*/React.createElement("div", {
     style: {
-      background: "#2A1515",
-      color: "#FF6B6B",
+      background: "#FEF2F2",
+      color: "#DC2626",
       padding: 12,
       borderRadius: 10,
       marginBottom: 16,
@@ -1316,9 +1331,9 @@ function LogTab({
       border: "1px solid",
       borderRadius: 10,
       cursor: "pointer",
-      background: mode === m ? "#FF5722" : "#1C1F2A",
+      background: mode === m ? "#FF5722" : "#FFFFFF",
       color: mode === m ? "#fff" : "#6B7280",
-      borderColor: mode === m ? "#FF5722" : "#2A2D3A",
+      borderColor: mode === m ? "#FF5722" : "#E5E7EB",
       fontFamily: "inherit",
       fontSize: 13,
       fontWeight: 600
@@ -1331,7 +1346,7 @@ function LogTab({
       fontSize: 12,
       fontWeight: 700,
       color: "#6B7280",
-      background: "#0F1117",
+      background: "#F7F8FA",
       position: "sticky",
       top: 0,
       zIndex: 5
@@ -1430,7 +1445,7 @@ function SessCard({
     }
   }, open ? "▾" : "›")), open && /*#__PURE__*/React.createElement("div", {
     style: {
-      background: "#0D1018",
+      background: "#F3F4F6",
       padding: "0 16px 16px"
     }
   }, hasDetail ? /*#__PURE__*/React.createElement("div", {
@@ -1452,7 +1467,7 @@ function SessCard({
       top: 14,
       bottom: 0,
       width: 2,
-      background: "#2A2D3A"
+      background: "#E5E7EB"
     }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1615,7 +1630,7 @@ function DayGroup({
       }
     }, isOpen ? "▾" : "›")), isOpen && /*#__PURE__*/React.createElement("div", {
       style: {
-        background: "#0D1018",
+        background: "#F3F4F6",
         paddingBottom: 8
       }
     }, ss.map(s => /*#__PURE__*/React.createElement("div", {
@@ -1626,7 +1641,7 @@ function DayGroup({
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        borderTop: "1px solid #1C1F2A"
+        borderTop: "1px solid #E5E7EB"
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -1677,7 +1692,7 @@ function DayGroup({
         top: 11,
         bottom: 0,
         width: 2,
-        background: "#2A2D3A"
+        background: "#E5E7EB"
       }
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -1980,7 +1995,7 @@ function AnalysisTab({
   }, m.days, "日稼働\u3000", m.count, "件\u3000", m.hours.toFixed(1), "h")), editMonth === m.key && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "10px 16px",
-      background: "#0D1018",
+      background: "#F3F4F6",
       display: "flex",
       gap: 8,
       borderBottom: "1px solid #2A2D3A"
