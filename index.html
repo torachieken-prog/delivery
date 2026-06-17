@@ -772,39 +772,20 @@ function HomeTab({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: multi ? 6 : 0
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          flexWrap: "wrap"
+          marginBottom: 6
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 14,
           fontWeight: 700
         }
-      }, toJpDate(date)), ss.map(s => /*#__PURE__*/React.createElement("span", {
-        key: s.id,
+      }, toJpDate(date)), multi && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 11,
-          background: SVC_CLR[s.service] + "20",
-          color: SVC_CLR[s.service],
-          padding: "2px 8px",
-          borderRadius: 20,
-          fontWeight: 600
-        }
-      }, s.service))), /*#__PURE__*/React.createElement("span", {
-        style: {
-          fontSize: multi ? 13 : 18,
+          fontSize: 13,
           fontWeight: 700,
-          color: multi ? "#9CA3AF" : "#111827",
-          flexShrink: 0,
-          marginLeft: 8
+          color: "#9CA3AF"
         }
-      }, multi ? `計 ${yen(dayTotal)}` : yen(dayTotal))), multi && ss.map((s, i) => /*#__PURE__*/React.createElement("div", {
+      }, "計 ", yen(dayTotal))), ss.map((s, i) => /*#__PURE__*/React.createElement("div", {
         key: s.id,
         style: {
           display: "flex",
