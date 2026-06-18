@@ -468,11 +468,30 @@ function App() {
         });
         setStatus("saved");
         setTimeout(() => setStatus(""), 3000);
-      } catch {
+      } catch (err) {
         setStatus("error");
+        console.error("save failed:", err);
       }
     }, 2000);
   }, []);
+
+  // 即時保存（セッション追加・削除など重要な操作に使用）
+  const forceSave = useCallback(async (s, e, l) => {
+    if (timer.current) clearTimeout(timer.current);
+    setStatus("saving");
+    try {
+      await jbWrite(getJB(), getBIN(), {
+        sessions: s,
+        expenses: e || expenses,
+        logs: l || logs || {}
+      });
+      setStatus("saved");
+      setTimeout(() => setStatus(""), 3000);
+    } catch (err) {
+      setStatus("error");
+      console.error("forceSave failed:", err);
+    }
+  }, [expenses, logs]);
   const updSessions = useCallback(s => {
     setSessions(s);
     doSave(s, expenses, logs);
@@ -487,16 +506,19 @@ function App() {
   }, [sessions, expenses, doSave]);
   const saveSession = useCallback(s => {
     const next = [...sessions.filter(x => x.id !== s.id), s].sort((a, b) => b.date.localeCompare(a.date));
-    updSessions(next);
+    setSessions(next);
+    forceSave(next, expenses, logs);
     setTab("log");
     setAddStep("pick");
     setDraft(null);
     setAddErr("");
-  }, [sessions, updSessions]);
+  }, [sessions, expenses, logs, forceSave]);
   const delSession = useCallback(id => {
-    updSessions(sessions.filter(x => x.id !== id));
+    const next = sessions.filter(x => x.id !== id);
+    setSessions(next);
+    forceSave(next, expenses, logs);
     setOpenId(null);
-  }, [sessions, updSessions]);
+  }, [sessions, expenses, logs, forceSave]);
   const handleFile = useCallback(async file => {
     const ak = getAK();
     if (!ak) {
