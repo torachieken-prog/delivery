@@ -275,6 +275,8 @@ async function jbCreate(k, d) {
 async function analyzeImg(ak, b64, mime) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
+    mode: "cors",
+    credentials: "omit",
     headers: {
       "Content-Type": "application/json",
       "x-api-key": ak,
@@ -290,7 +292,7 @@ async function analyzeImg(ak, b64, mime) {
           type: "image",
           source: {
             type: "base64",
-            media_type: mime,
+            media_type: mime || "image/jpeg",
             data: b64
           }
         }, {
@@ -300,6 +302,10 @@ async function analyzeImg(ak, b64, mime) {
       }]
     })
   });
+  if (!r.ok) {
+    const e = await r.text();
+    throw new Error(`API ${r.status}: ${e.slice(0, 120)}`);
+  }
   const d = await r.json();
   const txt = d.content?.find(c => c.type === "text")?.text || "";
   return JSON.parse(txt.replace(/```json|```/g, "").trim());
@@ -423,6 +429,7 @@ function App() {
   const [openId, setOpenId] = useState(null);
   const [logs, setLogs] = useState({});
   const [detailDate, setDetailDate] = useState(null);
+  const [logViewMode, setLogViewMode] = useState("daily");
   const fileRef = useRef();
   const timer = useRef();
   const getJB = () => localStorage.getItem(LS.JB) || "";
@@ -531,7 +538,8 @@ function App() {
       });
       setAddStep("confirm");
     } catch (e) {
-      setAddErr("読み取りに失敗しました: " + e.message);
+      const msg = e.name === "TypeError" ? "ネットワークエラー。APIキーの確認と、分析タブ→⚙️でキーを再保存してください" : e.message;
+      setAddErr("読み取りに失敗: " + msg);
     } finally {
       setExtracting(false);
     }
@@ -623,7 +631,9 @@ function App() {
     openId: openId,
     setOpenId: setOpenId,
     onDelete: delSession,
-    onOpenDetail: setDetailDate
+    onOpenDetail: setDetailDate,
+    viewMode: logViewMode,
+    setViewMode: setLogViewMode
   }), tab === "analysis" && /*#__PURE__*/React.createElement(AnalysisTab, {
     sessions: sessions,
     expenses: expenses,
@@ -1348,9 +1358,12 @@ function LogTab({
   openId,
   setOpenId,
   onDelete,
-  onOpenDetail
+  onOpenDetail,
+  viewMode,
+  setViewMode
 }) {
-  const [mode, setMode] = useState("session");
+  const mode = viewMode || "daily";
+  const setMode = setViewMode;
   const byMonth = {};
   sessions.forEach(s => {
     const m = s.date.slice(0, 7);
