@@ -27,7 +27,7 @@ input:focus,select:focus{border-color:#FF5722}
 <body>
 <div id="root"></div>
 <script>
-if(typeof React==='undefined'){document.getElementById('root').innerHTML='<div style="padding:40px;text-align:center;color:#374151"><div style="font-size:32px;margin-bottom:16px">⚠️</div><div style="font-weight:700;margin-bottom:8px">読み込みに失敗しました</div><div style="color:#6B7280;font-size:14px">ページをリロードしてください</div><button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#FF5722;color:white;border:none;border-radius:10px;font-size:15px;cursor:pointer">リロード</button></div>';}
+if(typeof React==='undefined'){document.getElementById('root').innerHTML='<div style="padding:40px;text-align:center;color:#374151"><div style="font-size:32px;margin-bottom:16px">⚠️</div><div style="font-weight:700;margin-bottom:8px">読み込みに失敗しました</div><button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#FF5722;color:white;border:none;border-radius:10px;font-size:15px;cursor:pointer">リロード</button></div>';}
 const {
   useState,
   useEffect,
@@ -479,7 +479,7 @@ function App() {
     });
   }, []);
 
-  // 即時保存（refsから読むのでstale closure問題なし）
+  // 即時保存 + 読み返し検証（refsから読むのでstale closure問題なし）
   const forceSave = useCallback(async overSess => {
     if (timer.current) clearTimeout(timer.current);
     const s = overSess || sessRef.current;
@@ -487,6 +487,10 @@ function App() {
     const l = logRef.current;
     const k = getJB(),
       id = getBIN();
+    if (!k || !id) {
+      setStatus("ERR:キーまたはBinID未設定");
+      return;
+    }
     setStatus("saving");
     try {
       await jbWrite(k, id, {
@@ -494,11 +498,18 @@ function App() {
         expenses: e,
         logs: l || {}
       });
-      setStatus("saved");
-      setTimeout(() => setStatus(""), 4000);
+      // 書き込み後すぐに読み返して検証
+      const verify = await jbRead(k, id);
+      const wCount = s.length;
+      const rCount = verify?.sessions?.length || 0;
+      if (rCount >= wCount) {
+        setStatus(`saved:${wCount}`);
+        setTimeout(() => setStatus(""), 6000);
+      } else {
+        setStatus(`ERR:書込${wCount}件→読取${rCount}件 BinID:${id.slice(0, 8)}`);
+      }
     } catch (err) {
-      setStatus("error");
-      console.error("forceSave failed:", err.message);
+      setStatus("ERR:" + err.message.slice(0, 60));
     }
   }, []);
 
@@ -650,16 +661,17 @@ function App() {
       top: 0,
       left: "50%",
       transform: "translateX(-50%)",
-      background: status === "error" ? "#CC2222" : "#FFFFFF",
-      color: status === "error" ? "#fff" : "#6B7280",
-      padding: "5px 16px",
-      borderRadius: "0 0 10px 10px",
+      maxWidth: 520,
+      width: "100%",
+      background: status.startsWith("ERR") ? "#DC2626" : status === "saving" ? "#374151" : "#10B981",
+      color: "#fff",
+      padding: "6px 16px",
       fontSize: 12,
       zIndex: 200,
-      border: "1px solid #2A2D3A",
-      borderTop: "none"
+      borderRadius: "0 0 10px 10px",
+      textAlign: "center"
     }
-  }, status === "saving" ? "保存中..." : status === "saved" ? "✓ 保存済み" : "⚠ 保存失敗"), tab === "home" && /*#__PURE__*/React.createElement(HomeTab, {
+  }, status === "saving" ? "保存中..." : status.startsWith("saved:") ? "✓ 保存確認済み (" + status.split(":")[1] + "件)" : status.startsWith("ERR:") ? status : "保存中..."), tab === "home" && /*#__PURE__*/React.createElement(HomeTab, {
     sessions: sessions,
     expenses: expenses,
     onAdd: () => nav("add")
