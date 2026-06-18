@@ -436,6 +436,19 @@ function App() {
   const [logViewMode, setLogViewMode] = useState("session");
   const fileRef = useRef();
   const timer = useRef();
+  // refs: 常に最新値を保持（stale closure対策）
+  const sessRef = useRef([]);
+  const expRef = useRef({});
+  const logRef = useRef({});
+  useEffect(() => {
+    sessRef.current = sessions;
+  }, [sessions]);
+  useEffect(() => {
+    expRef.current = expenses;
+  }, [expenses]);
+  useEffect(() => {
+    logRef.current = logs;
+  }, [logs]);
   const getJB = () => localStorage.getItem(LS.JB) || "";
   const getBIN = () => localStorage.getItem(LS.BIN) || "";
   const getAK = () => localStorage.getItem(LS.AK) || "";
@@ -445,80 +458,88 @@ function App() {
       return;
     }
     jbRead(getJB(), getBIN()).then(d => {
-      setSessions(d?.sessions || SEED);
-      setExpenses(d?.expenses || SEED_EXP);
-      setLogs(d?.logs || SEED_LOGS);
+      const s = d?.sessions || SEED;
+      const e = d?.expenses || SEED_EXP;
+      const l = d?.logs || SEED_LOGS;
+      setSessions(s);
+      setExpenses(e);
+      setLogs(l);
+      sessRef.current = s;
+      expRef.current = e;
+      logRef.current = l;
       setStep("main");
     }).catch(() => {
       setSessions(SEED);
       setExpenses(SEED_EXP);
       setLogs(SEED_LOGS);
+      sessRef.current = SEED;
+      expRef.current = SEED_EXP;
+      logRef.current = SEED_LOGS;
       setStep("main");
     });
   }, []);
-  const doSave = useCallback((s, e, l) => {
-    if (timer.current) clearTimeout(timer.current);
-    setStatus("saving");
-    timer.current = setTimeout(async () => {
-      try {
-        await jbWrite(getJB(), getBIN(), {
-          sessions: s,
-          expenses: e,
-          logs: l || {}
-        });
-        setStatus("saved");
-        setTimeout(() => setStatus(""), 3000);
-      } catch (err) {
-        setStatus("error");
-        console.error("save failed:", err);
-      }
-    }, 2000);
-  }, []);
 
-  // 即時保存（セッション追加・削除など重要な操作に使用）
-  const forceSave = useCallback(async (s, e, l) => {
+  // 即時保存（refsから読むのでstale closure問題なし）
+  const forceSave = useCallback(async overSess => {
     if (timer.current) clearTimeout(timer.current);
+    const s = overSess || sessRef.current;
+    const e = expRef.current;
+    const l = logRef.current;
+    const k = getJB(),
+      id = getBIN();
     setStatus("saving");
     try {
-      await jbWrite(getJB(), getBIN(), {
+      await jbWrite(k, id, {
         sessions: s,
-        expenses: e || expenses,
-        logs: l || logs || {}
+        expenses: e,
+        logs: l || {}
       });
       setStatus("saved");
-      setTimeout(() => setStatus(""), 3000);
+      setTimeout(() => setStatus(""), 4000);
     } catch (err) {
       setStatus("error");
-      console.error("forceSave failed:", err);
+      console.error("forceSave failed:", err.message);
     }
-  }, [expenses, logs]);
+  }, []);
+
+  // デバウンス保存（入力中など）
+  const doSave = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    setStatus("saving");
+    timer.current = setTimeout(() => forceSave(), [2000]);
+  }, [forceSave]);
   const updSessions = useCallback(s => {
     setSessions(s);
-    doSave(s, expenses, logs);
-  }, [expenses, logs, doSave]);
+    sessRef.current = s;
+    doSave();
+  }, [doSave]);
   const updExpenses = useCallback(e => {
     setExpenses(e);
-    doSave(sessions, e, logs);
-  }, [sessions, logs, doSave]);
+    expRef.current = e;
+    doSave();
+  }, [doSave]);
   const updLogs = useCallback(l => {
     setLogs(l);
-    doSave(sessions, expenses, l);
-  }, [sessions, expenses, doSave]);
+    logRef.current = l;
+    doSave();
+  }, [doSave]);
   const saveSession = useCallback(s => {
-    const next = [...sessions.filter(x => x.id !== s.id), s].sort((a, b) => b.date.localeCompare(a.date));
+    const next = [...sessRef.current.filter(x => x.id !== s.id), s].sort((a, b) => b.date.localeCompare(a.date));
     setSessions(next);
-    forceSave(next, expenses, logs);
+    sessRef.current = next;
+    forceSave(next);
     setTab("log");
     setAddStep("pick");
     setDraft(null);
     setAddErr("");
-  }, [sessions, expenses, logs, forceSave]);
+  }, [forceSave]);
   const delSession = useCallback(id => {
-    const next = sessions.filter(x => x.id !== id);
+    const next = sessRef.current.filter(x => x.id !== id);
     setSessions(next);
-    forceSave(next, expenses, logs);
+    sessRef.current = next;
+    forceSave(next);
     setOpenId(null);
-  }, [sessions, expenses, logs, forceSave]);
+  }, [forceSave]);
   const handleFile = useCallback(async file => {
     const ak = getAK();
     if (!ak) {
