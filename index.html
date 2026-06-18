@@ -272,8 +272,12 @@ async function jbCreate(k, d) {
 }
 
 // ── Claude API ───────────────────────────────────────────────────────
+const getApiUrl = () => {
+  const p = localStorage.getItem("drv_proxy") || "";
+  return p ? p.replace(/\/$/, "") : "https://api.anthropic.com";
+};
 async function analyzeImg(ak, b64, mime) {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetch(getApiUrl() + "/v1/messages", {
     method: "POST",
     mode: "cors",
     credentials: "omit",
@@ -429,7 +433,7 @@ function App() {
   const [openId, setOpenId] = useState(null);
   const [logs, setLogs] = useState({});
   const [detailDate, setDetailDate] = useState(null);
-  const [logViewMode, setLogViewMode] = useState("daily");
+  const [logViewMode, setLogViewMode] = useState("session");
   const fileRef = useRef();
   const timer = useRef();
   const getJB = () => localStorage.getItem(LS.JB) || "";
@@ -2134,7 +2138,51 @@ function AnalysisTab({
       color: "#9CA3AF",
       marginTop: 6
     }
-  }, "未入力の場合、画像読み取りは使えません"))));
+  }, "未入力の場合、画像読み取りは使えません")), showSettings && (() => {
+    const [proxyUrl, setProxyUrl] = useState(localStorage.getItem("drv_proxy") || "");
+    const [proxySaved, setProxySaved] = useState(false);
+    const saveProxy = () => {
+      localStorage.setItem("drv_proxy", proxyUrl.trim());
+      setProxySaved(true);
+      setTimeout(() => setProxySaved(false), 3000);
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card",
+      style: {
+        padding: 16,
+        marginTop: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "lbl"
+    }, "CORSプロキシURL（画像読み取りが失敗する場合）"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#9CA3AF",
+        marginTop: 4,
+        marginBottom: 8
+      }
+    }, "空欄=直接接続。エラーが出る場合はCloudflare WorkerのURLを入力"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      value: proxyUrl,
+      onChange: e => setProxyUrl(e.target.value),
+      placeholder: "https://your-worker.workers.dev",
+      style: {
+        flex: 1
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-o",
+      onClick: saveProxy,
+      style: {
+        width: "auto",
+        padding: "10px 16px",
+        whiteSpace: "nowrap"
+      }
+    }, proxySaved ? "✓ 保存済み" : "保存")));
+  })()));
 }
 function DetailPage({
   date,
@@ -2185,8 +2233,10 @@ function DetailPage({
     setParsing(true);
     setParseErr("");
     try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
+      const r = await fetch(getApiUrl() + "/v1/messages", {
         method: "POST",
+        mode: "cors",
+        credentials: "omit",
         headers: {
           "Content-Type": "application/json",
           "x-api-key": ak,
