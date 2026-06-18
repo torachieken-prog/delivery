@@ -2137,6 +2137,10 @@ function DetailPage({
   const [nextTheme, setNextTheme] = useState(log.nextTheme || "");
   const [noteIdeas, setNoteIdeas] = useState(log.noteIdeas || "");
   const [saving, setSaving] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [parseErr, setParseErr] = useState("");
   const timer = useRef();
   const save = updates => {
     if (timer.current) clearTimeout(timer.current);
@@ -2154,6 +2158,62 @@ function DetailPage({
       onUpdateLog(merged);
       setSaving(false);
     }, 1500);
+  };
+  const parseBulk = async () => {
+    const ak = localStorage.getItem("drv_akey") || "";
+    if (!ak) {
+      setParseErr("Anthropic APIキーが未設定です（分析タブ→設定から追加）");
+      return;
+    }
+    if (!bulkText.trim()) {
+      setParseErr("テキストを入力してください");
+      return;
+    }
+    setParsing(true);
+    setParseErr("");
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ak,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 800,
+          messages: [{
+            role: "user",
+            content: `以下の稼働ログテキストから各項目を抽出してください。JSONのみ返してください（コードブロック不要）:\n{"score":数値または0,"good":"良かった点","improve":"改善点","insights":"気づき","nextTheme":"次回テーマ","noteIdeas":"noteネタ"}\n\n${bulkText}`
+          }]
+        })
+      });
+      const d = await r.json();
+      const txt = d.content?.find(c => c.type === "text")?.text || "{}";
+      const parsed = JSON.parse(txt.replace(/```json|```/g, "").trim());
+      const updates = {
+        score: parsed.score || score,
+        good: parsed.good || good,
+        improve: parsed.improve || improve,
+        insights: parsed.insights || insights,
+        nextTheme: parsed.nextTheme || nextTheme,
+        noteIdeas: parsed.noteIdeas || noteIdeas
+      };
+      setScore(updates.score);
+      setGood(updates.good);
+      setImprove(updates.improve);
+      setInsights(updates.insights);
+      setNextTheme(updates.nextTheme);
+      setNoteIdeas(updates.noteIdeas);
+      save(updates);
+      setBulkMode(false);
+      setBulkText("");
+    } catch (e) {
+      setParseErr("解析に失敗しました: " + e.message);
+    } finally {
+      setParsing(false);
+    }
   };
   const dayTotal = sessions.reduce((a, s) => a + sessTotal(s), 0);
   const dayHours = sessions.reduce((a, s) => a + (s.total_time || 0), 0);
@@ -2313,12 +2373,76 @@ function DetailPage({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 14,
-      fontWeight: 700,
-      color: "#374151",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: 12
     }
-  }, "📝 稼働ログ"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: "#374151"
+    }
+  }, "📝 稼働ログ"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setBulkMode(p => !p);
+      setParseErr("");
+    },
+    style: {
+      background: "none",
+      border: "1px solid #E5E7EB",
+      borderRadius: 8,
+      padding: "5px 12px",
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: "pointer",
+      color: bulkMode ? "#FF5722" : "#374151"
+    }
+  }, bulkMode ? "× 閉じる" : "📋 一括入力")), bulkMode && /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 16,
+      marginBottom: 12,
+      borderColor: "#FF572230"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl",
+    style: {
+      marginBottom: 8
+    }
+  }, "ログテキストを貼り付けてAIが各項目に振り分けます"), /*#__PURE__*/React.createElement("textarea", {
+    value: bulkText,
+    onChange: e => setBulkText(e.target.value),
+    placeholder: "稼働ログのテキストをそのまま貼り付けてください。\n\n例）\n良かった点\nロケット単独で2時間稼働できた。\n\n改善点\n案件の見極めがまだ甘い。\n\n気づき\n配達後の位置取りが重要...",
+    rows: 8,
+    style: {
+      width: "100%",
+      border: "1px solid #E5E7EB",
+      borderRadius: 8,
+      padding: 10,
+      fontSize: 13,
+      lineHeight: 1.6,
+      outline: "none",
+      resize: "vertical",
+      fontFamily: "inherit",
+      color: "#111827",
+      background: "#F9FAFB"
+    }
+  }), parseErr && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#DC2626",
+      fontSize: 12,
+      marginTop: 8
+    }
+  }, parseErr), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-o",
+    onClick: parseBulk,
+    disabled: parsing,
+    style: {
+      marginTop: 10
+    }
+  }, parsing ? "🤖 解析中..." : "🤖 AIで解析して入力")), /*#__PURE__*/React.createElement("div", {
     className: "card",
     style: {
       padding: 16,
