@@ -1796,7 +1796,7 @@ function AnalysisTab({
     mData[m].count += sessCount(s) || 0;
     mData[m].days.add(s.date);
   });
-  const monthArr = Object.entries(mData).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => ({
+  const monthArr = Object.entries(mData).sort(([a], [b]) => b.localeCompare(a)).map(([k, v]) => ({
     key: k,
     label: `${parseInt(k.slice(5))}月`,
     revenue: v.revenue,
@@ -2204,6 +2204,32 @@ function AnalysisTab({
       marginTop: 6
     }
   }, "未入力の場合、画像読み取りは使えません")), showSettings && /*#__PURE__*/React.createElement(ProxySettings, null), showSettings && /*#__PURE__*/React.createElement(BinSync, null)));
+}
+function AutoTextarea({
+  value,
+  onChange,
+  placeholder,
+  style
+}) {
+  const ref = useRef();
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto';
+      ref.current.style.height = ref.current.scrollHeight + 'px';
+    }
+  }, [value]);
+  return /*#__PURE__*/React.createElement("textarea", {
+    ref: ref,
+    value: value,
+    onChange: e => onChange(e.target.value),
+    placeholder: placeholder,
+    style: {
+      ...style,
+      overflow: "hidden",
+      resize: "none",
+      minHeight: 72
+    }
+  });
 }
 function ProxySettings() {
   const [proxyUrl, setProxyUrl] = useState(localStorage.getItem("drv_proxy") || "");
@@ -3055,11 +3081,10 @@ function DetailPage({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, label), /*#__PURE__*/React.createElement("textarea", {
+  }, label), /*#__PURE__*/React.createElement(AutoTextarea, {
     value: val,
-    onChange: e => onChange(e.target.value),
+    onChange: onChange,
     placeholder: "ここに記録...",
-    rows: 3,
     style: {
       width: "100%",
       border: "none",
@@ -3068,7 +3093,6 @@ function DetailPage({
       fontSize: 14,
       lineHeight: 1.7,
       outline: "none",
-      resize: "none",
       fontFamily: "inherit",
       marginTop: 6,
       padding: 0
