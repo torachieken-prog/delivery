@@ -2844,7 +2844,10 @@ function DetailPage({
     }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      flex: 1,
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
       display: "flex",
       justifyContent: "space-between"
     }
@@ -2876,7 +2879,59 @@ function DetailPage({
       flexShrink: 0,
       marginLeft: 8
     }
-  }, yen(d.amount)))))))), sessions.filter(s => !s.deliveries.some(d => !d._agg) && editId !== s.id).map(s => /*#__PURE__*/React.createElement("div", {
+  }, yen(d.amount))), (() => {
+    const kmRate = d.distance ? Math.round(d.amount / d.distance) : null;
+    let minRate = null,
+      hourRate = null;
+    if (d.time && i < s.deliveries.length - 1) {
+      const nd = s.deliveries[i + 1];
+      if (nd?.time) {
+        const [h1, m1] = d.time.split(':').map(Number);
+        const [h2, m2] = nd.time.split(':').map(Number);
+        const mins = h2 * 60 + m2 - (h1 * 60 + m1);
+        if (mins > 0 && mins <= 90) {
+          minRate = Math.round(d.amount / mins);
+          hourRate = minRate * 60;
+        }
+      }
+    }
+    if (!kmRate && !minRate) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap",
+        marginTop: 5,
+        padding: "4px 8px",
+        background: "#F9FAFB",
+        borderRadius: 6
+      }
+    }, kmRate && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "#374151"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#9CA3AF"
+      }
+    }, "km単価"), " ", yen(kmRate)), minRate && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "#374151"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#9CA3AF"
+      }
+    }, "分単価"), " ", yen(minRate)), hourRate && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "#FF5722",
+        fontWeight: 600
+      }
+    }, "≈", yen(hourRate), "/h"));
+  })())))))), sessions.filter(s => !s.deliveries.some(d => !d._agg) && editId !== s.id).map(s => /*#__PURE__*/React.createElement("div", {
     key: s.id + "_agg",
     style: {
       padding: "8px 16px 0"
