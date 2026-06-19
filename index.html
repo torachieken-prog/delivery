@@ -2883,13 +2883,14 @@ function DetailPage({
     const kmRate = d.distance ? Math.round(d.amount / d.distance) : null;
     let minRate = null,
       hourRate = null;
-    if (d.time && i < s.deliveries.length - 1) {
-      const nd = s.deliveries[i + 1];
-      if (nd?.time) {
-        const [h1, m1] = d.time.split(':').map(Number);
-        const [h2, m2] = nd.time.split(':').map(Number);
+    // 「前の案件完了→この案件完了」の時間差（1件目は不明のためスキップ）
+    if (d.time && i > 0) {
+      const pd = s.deliveries[i - 1];
+      if (pd?.time) {
+        const [h1, m1] = pd.time.split(':').map(Number);
+        const [h2, m2] = d.time.split(':').map(Number);
         const mins = h2 * 60 + m2 - (h1 * 60 + m1);
-        if (mins > 0 && mins <= 90) {
+        if (mins > 0 && mins <= 120) {
           minRate = Math.round(d.amount / mins);
           hourRate = minRate * 60;
         }
