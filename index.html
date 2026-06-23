@@ -692,6 +692,7 @@ function App() {
   }, status === "saving" ? "保存中..." : status.startsWith("saved:") ? "✓ 保存確認済み (" + status.split(":")[1] + "件)" : status.startsWith("ERR:") ? status : "保存中..."), tab === "home" && /*#__PURE__*/React.createElement(HomeTab, {
     sessions: sessions,
     expenses: expenses,
+    logs: logs,
     onAdd: () => nav("add")
   }), tab === "add" && /*#__PURE__*/React.createElement(AddTab, {
     step: addStep,
@@ -772,6 +773,7 @@ function App() {
 function HomeTab({
   sessions,
   expenses,
+  logs,
   onAdd
 }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -786,6 +788,10 @@ function HomeTab({
   const mHrs = ms.reduce((a, s) => a + (s.total_time || 0), 0);
   const mCnt = ms.reduce((a, s) => a + (sessCount(s) || 0), 0);
   const todayRev = isCurrentMonth ? sessions.filter(s => s.date === today).reduce((a, s) => a + sessTotal(s), 0) : 0;
+  // 実稼働時間（ログから集計）
+  const mActualHrs = Object.entries(logs || {}).filter(([d]) => d.startsWith(tm)).reduce((a, [, l]) => a + (l.actual_time || 0), 0);
+  const hourlyRate = mActualHrs > 0 ? Math.round((mRev - mExp) / mActualHrs) : mHrs > 0 ? Math.round((mRev - mExp) / mHrs) : null;
+  const hrLabel = mActualHrs > 0 ? `実稼働${mActualHrs}h` : `${mHrs.toFixed(1)}h`;
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "28px 16px 16px"
@@ -809,7 +815,20 @@ function HomeTab({
       color: "#6B7280",
       marginTop: 5
     }
-  }, yen(mRev), " 売上 ー ", yen(mExp), " 経費")), /*#__PURE__*/React.createElement("div", {
+  }, yen(mRev), " 売上 ー ", yen(mExp), " 経費"), hourlyRate && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: "#FF5722",
+      marginTop: 4
+    }
+  }, yen(hourlyRate), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      fontWeight: 400,
+      color: "#9CA3AF"
+    }
+  }, "/h（", hrLabel, "）"))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr 1fr",
@@ -2733,9 +2752,10 @@ function DetailPage({
     style: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr 1fr 1fr",
-      gap: 8
+      gap: 8,
+      marginBottom: 8
     }
-  }, [["売上", yen(dayTotal)], ["時給", dayHours ? yen(Math.round(dayTotal / dayHours)) : "-"], ["件数", `${dayCount}件`], ["距離", dayDist ? `${dayDist.toFixed(1)}km` : "-"]].map(([l, v]) => /*#__PURE__*/React.createElement("div", {
+  }, [["売上", yen(dayTotal)], ["件数", `${dayCount}件`], ["距離", dayDist ? `${dayDist.toFixed(1)}km` : "-"], ["時給", log.actual_time ? yen(Math.round(dayTotal / log.actual_time)) : dayHours ? yen(Math.round(dayTotal / dayHours)) : "-"]].map(([l, v]) => /*#__PURE__*/React.createElement("div", {
     key: l,
     className: "card",
     style: {
@@ -2749,7 +2769,83 @@ function DetailPage({
       fontSize: 14,
       fontWeight: 700
     }
-  }, v))))), sessions.map(s => editId === s.id && editDraft ? /*#__PURE__*/React.createElement("div", {
+  }, v)))), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#9CA3AF"
+    }
+  }, "🏠 実稼働"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    step: ".5",
+    value: log.actual_time || "",
+    onChange: e => {
+      const v = parseFloat(e.target.value) || 0;
+      save({
+        actual_time: v
+      });
+    },
+    placeholder: "-",
+    style: {
+      width: 52,
+      padding: "3px 6px",
+      fontSize: 13,
+      fontWeight: 700,
+      border: "1px solid #E5E7EB",
+      borderRadius: 6,
+      textAlign: "center"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#9CA3AF"
+    }
+  }, "h（手入力）")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 12,
+      flexWrap: "wrap"
+    }
+  }, sessions.map(s => /*#__PURE__*/React.createElement("span", {
+    key: s.id,
+    style: {
+      fontSize: 11,
+      color: "#6B7280"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: SVC_CLR[s.service],
+      fontWeight: 600
+    }
+  }, s.service), " ", s.total_time ? s.total_time + "h" : "-")))), log.actual_time && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#9CA3AF",
+      marginTop: 4
+    }
+  }, "時給 = ¥", dayTotal.toLocaleString(), " ÷ ", log.actual_time, "h = ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#FF5722",
+      fontWeight: 600
+    }
+  }, yen(Math.round(dayTotal / log.actual_time)), "/h")))), sessions.map(s => editId === s.id && editDraft ? /*#__PURE__*/React.createElement("div", {
     key: s.id,
     style: {
       padding: "8px 16px 0"
