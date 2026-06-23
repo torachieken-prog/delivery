@@ -2813,7 +2813,73 @@ function DetailPage({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "稼働時間 (h)"), /*#__PURE__*/React.createElement("input", {
+  }, "稼働時間（開始〜終了で自動計算）"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      marginTop: 4
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: editDraft.start_time || "",
+    onChange: e => {
+      const st = e.target.value;
+      const et = editDraft.end_time || "";
+      const [h1, m1] = st.split(':').map(Number);
+      const [h2, m2] = (et || "0:0").split(':').map(Number);
+      const d = h2 * 60 + m2 - (h1 * 60 + m1);
+      setEditDraft(p => ({
+        ...p,
+        start_time: st,
+        ...(d > 0 ? {
+          total_time: Math.round(d / 6) / 10
+        } : {})
+      }));
+    },
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#9CA3AF",
+      flexShrink: 0
+    }
+  }, "〜"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: editDraft.end_time || "",
+    onChange: e => {
+      const et = e.target.value;
+      const st = editDraft.start_time || "";
+      const [h1, m1] = (st || "0:0").split(':').map(Number);
+      const [h2, m2] = et.split(':').map(Number);
+      const d = h2 * 60 + m2 - (h1 * 60 + m1);
+      setEditDraft(p => ({
+        ...p,
+        end_time: et,
+        ...(d > 0 ? {
+          total_time: Math.round(d / 6) / 10
+        } : {})
+      }));
+    },
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: "#FF5722",
+      flexShrink: 0,
+      minWidth: 40
+    }
+  }, editDraft.total_time ? editDraft.total_time + "h" : "-")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#9CA3AF",
+      marginTop: 4
+    }
+  }, "直接入力も可：", /*#__PURE__*/React.createElement("input", {
     type: "number",
     step: ".5",
     value: editDraft.total_time || "",
@@ -2821,8 +2887,14 @@ function DetailPage({
       ...d,
       total_time: parseFloat(e.target.value) || 0
     })),
-    placeholder: "例: 2.0"
-  })), /*#__PURE__*/React.createElement("div", {
+    placeholder: "h",
+    style: {
+      width: 60,
+      display: "inline",
+      padding: "4px 6px",
+      fontSize: 13
+    }
+  }), " h")), /*#__PURE__*/React.createElement("div", {
     className: "lbl",
     style: {
       marginBottom: 8
