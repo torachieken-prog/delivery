@@ -2272,7 +2272,7 @@ function AnalysisTab({
         gap: 8,
         marginBottom: 16
       }
-    }, [["売上", yen(m.revenue)], ["利益", yen(m.profit)], ["時給", m.hours > 0 ? yen(Math.round(m.profit / m.hours)) : "-"], ["稼働日", `${m.days}日`], ["件数", `${m.count}件`], ["時間", `${m.hours.toFixed(1)}h`]].map(([l, v]) => /*#__PURE__*/React.createElement("div", {
+    }, [["売上", yen(m.revenue)], ["利益", yen(m.profit)], ["時給", m.hours > 0 ? yen(Math.round(m.revenue / m.hours)) : "-"], ["稼働日", `${m.days}日`], ["件数", `${m.count}件`], ["時間", `${m.hours.toFixed(1)}h`]].map(([l, v]) => /*#__PURE__*/React.createElement("div", {
       key: l,
       style: {
         background: "#F9FAFB",
