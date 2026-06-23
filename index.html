@@ -301,7 +301,7 @@ async function analyzeImg(ak, b64, mime) {
           }
         }, {
           type: "text",
-          text: `このデリバリーアプリのスクリーンショットから配達記録を抽出してください。以下のJSONのみ返してください（コードブロック・説明文不要）:\n{"date":"YYYY-MM-DD","service":"ロケット","total_amount":数値,"deliveries":[{"time":"HH:MM","amount":数値,"distance_km":数値またはnull,"pick":"店舗名","drop":"配達先エリア"}]}\nserviceは「ロケット」「Uber Eats」「出前館」「その他」から選択。日付に年の記載がない場合は必ず${new Date().getFullYear()}年として扱う。完全に日付不明なら今日(${new Date().toISOString().slice(0, 10)})。距離不明ならnull。`
+          text: `このデリバリーアプリのスクリーンショットから配達記録を抽出してください。以下のJSONのみ返してください（コードブロック・説明文不要）:\n{"date":"YYYY-MM-DD","service":"ロケット","total_amount":数値,"start_time":"HH:MM","end_time":"HH:MM","deliveries":[{"time":"HH:MM","amount":数値,"distance_km":数値またはnull,"pick":"店舗名","drop":"配達先エリア"}]}\nserviceは「ロケット」「Uber Eats」「出前館」「その他」から選択。日付に年の記載がない場合は必ず${new Date().getFullYear()}年として扱う。完全に日付不明なら今日(${new Date().toISOString().slice(0, 10)})。start_timeは稼働開始時刻（画面に明示されていなければ最初の配達完了時刻）、end_timeは稼働終了時刻（明示されていなければ最後の配達完了時刻）。距離不明ならnull。`
         }]
       }]
     })
@@ -592,11 +592,22 @@ function App() {
         memo: "",
         _agg: true
       });
+      const st = result.start_time || "";
+      const et = result.end_time || "";
+      const autoTime = (s, e) => {
+        if (!s || !e) return 0;
+        const [h1, m1] = s.split(':').map(Number);
+        const [h2, m2] = e.split(':').map(Number);
+        const d = h2 * 60 + m2 - (h1 * 60 + m1);
+        return d > 0 ? Math.round(d / 6) / 10 : 0;
+      };
       setDraft({
         id: uid(),
         date: result.date || new Date().toISOString().slice(0, 10),
         service: SERVICES.includes(result.service) ? result.service : "ロケット",
-        total_time: 0,
+        total_time: autoTime(st, et),
+        start_time: st,
+        end_time: et,
         memo: "",
         deliveries: dels
       });
@@ -958,6 +969,13 @@ function AddTab({
     pick: "",
     drop: ""
   }]);
+  const calcT = (s, e) => {
+    if (!s || !e) return 0;
+    const [h1, m1] = s.split(':').map(Number);
+    const [h2, m2] = e.split(':').map(Number);
+    const d = h2 * 60 + m2 - (h1 * 60 + m1);
+    return d > 0 ? Math.round(d / 6) / 10 : 0;
+  };
   const addRow = () => setMRows(p => [...p, {
     id: uid(),
     time: "",
@@ -985,11 +1003,16 @@ function AddTab({
       setErr("金額を1件以上入力してください");
       return;
     }
+    const st = mRows.startT || "",
+      et = mRows.endT || "";
+    const autoT = calcT(st, et);
     onSave({
       id: uid(),
       date: mDate,
       service: mSvc,
-      total_time: parseFloat(mTime) || 0,
+      total_time: autoT || parseFloat(mTime) || 0,
+      start_time: st,
+      end_time: et,
       memo: "",
       deliveries: dels
     });
@@ -1044,13 +1067,55 @@ function AddTab({
     key: s
   }, s)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "稼働時間 (h)"), /*#__PURE__*/React.createElement("input", {
+  }, "稼働時間"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: mRows.startT || "",
+    onChange: e => setMRows(p => ({
+      ...p,
+      startT: e.target.value
+    })),
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#9CA3AF"
+    }
+  }, "〜"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: mRows.endT || "",
+    onChange: e => setMRows(p => ({
+      ...p,
+      endT: e.target.value
+    })),
+    style: {
+      flex: 1
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#9CA3AF",
+      marginTop: 4
+    }
+  }, "または直接入力：", /*#__PURE__*/React.createElement("input", {
     type: "number",
     step: ".5",
     value: mTime,
     onChange: e => setMTime(e.target.value),
-    placeholder: "例: 2.5"
-  })), /*#__PURE__*/React.createElement("div", {
+    placeholder: "h",
+    style: {
+      width: 64,
+      display: "inline",
+      padding: "4px 8px",
+      fontSize: 13
+    }
+  }), " h")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       fontWeight: 700,
@@ -1230,6 +1295,13 @@ function ConfirmScreen({
     ...d,
     [f]: v
   }));
+  const calcDraftTime = (s, e) => {
+    if (!s || !e) return 0;
+    const [h1, m1] = s.split(':').map(Number);
+    const [h2, m2] = e.split(':').map(Number);
+    const d = h2 * 60 + m2 - (h1 * 60 + m1);
+    return d > 0 ? Math.round(d / 6) / 10 : 0;
+  };
   const updDel = (id, f, v) => setDraft(d => ({
     ...d,
     deliveries: d.deliveries.map(x => x.id === id ? {
@@ -1323,13 +1395,71 @@ function ConfirmScreen({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "稼働時間 (h)"), /*#__PURE__*/React.createElement("input", {
+  }, "稼働時間（開始・終了から自動計算）"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      marginTop: 4
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: draft.start_time || "",
+    onChange: e => {
+      const st = e.target.value;
+      const et = draft.end_time || "";
+      const d = calcDraftTime(st, et);
+      upd("start_time", st);
+      if (d) upd("total_time", d);
+    },
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#9CA3AF",
+      flexShrink: 0
+    }
+  }, "〜"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: draft.end_time || "",
+    onChange: e => {
+      const et = e.target.value;
+      const st = draft.start_time || "";
+      const d = calcDraftTime(st, et);
+      upd("end_time", et);
+      if (d) upd("total_time", d);
+    },
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: "#FF5722",
+      flexShrink: 0,
+      minWidth: 40
+    }
+  }, draft.total_time ? draft.total_time + "h" : "-")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#9CA3AF",
+      marginTop: 4
+    }
+  }, "直接入力も可：", /*#__PURE__*/React.createElement("input", {
     type: "number",
     step: ".5",
     value: draft.total_time || "",
     onChange: e => upd("total_time", parseFloat(e.target.value) || 0),
-    placeholder: "例: 2.0"
-  })), /*#__PURE__*/React.createElement("div", {
+    placeholder: "h",
+    style: {
+      width: 64,
+      display: "inline",
+      padding: "4px 8px",
+      fontSize: 13
+    }
+  }), " h")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       fontWeight: 700,
