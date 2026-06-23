@@ -727,7 +727,8 @@ function App() {
   }), tab === "analysis" && /*#__PURE__*/React.createElement(AnalysisTab, {
     sessions: sessions,
     expenses: expenses,
-    setExpenses: updExpenses
+    setExpenses: updExpenses,
+    logs: logs
   }), /*#__PURE__*/React.createElement("nav", {
     style: {
       position: "fixed",
@@ -803,7 +804,7 @@ function HomeTab({
   // 実稼働時間（ログから集計）
   const mActualHrs = Object.entries(logs || {}).filter(([d]) => d.startsWith(tm)).reduce((a, [, l]) => a + (l.actual_time || 0), 0);
   const mHrs = mActualHrs > 0 ? mActualHrs : rawMHrs;
-  const hourlyRate = mHrs > 0 ? Math.round((mRev - mExp) / mHrs) : null;
+  const hourlyRate = mHrs > 0 ? Math.round(mRev / mHrs) : null;
   const hrLabel = mActualHrs > 0 ? `実稼働${mActualHrs}h` : `オンライン${rawMHrs.toFixed(1)}h`;
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2024,7 +2025,8 @@ function DayGroup({
 function AnalysisTab({
   sessions,
   expenses,
-  setExpenses
+  setExpenses,
+  logs
 }) {
   const [editMonth, setEditMonth] = useState(null);
   const [expInput, setExpInput] = useState("");
@@ -2213,11 +2215,17 @@ function AnalysisTab({
       if (!byDate[s.date]) byDate[s.date] = [];
       byDate[s.date].push(s);
     });
-    const days = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, ss]) => ({
-      label: `${parseInt(date.slice(5, 7))}/${parseInt(date.slice(8, 10))}`,
-      total: ss.reduce((a, s) => a + sessTotal(s), 0),
-      count: ss.reduce((a, s) => a + (sessCount(s) || 0), 0)
-    }));
+    const days = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, ss]) => {
+      const total = ss.reduce((a, s) => a + sessTotal(s), 0);
+      const count = ss.reduce((a, s) => a + (sessCount(s) || 0), 0);
+      const hrs = logs && logs[date]?.actual_time || ss.reduce((a, s) => a + (s.total_time || 0), 0);
+      return {
+        label: `${parseInt(date.slice(5, 7))}/${parseInt(date.slice(8, 10))}`,
+        total,
+        count,
+        rate: hrs > 0 ? Math.round(total / hrs) : 0
+      };
+    });
     const maxDay = Math.max(...days.map(d => d.total), 1);
     const svcMap = {};
     daySess.forEach(s => {
@@ -2282,63 +2290,125 @@ function AnalysisTab({
     }, v)))), /*#__PURE__*/React.createElement("div", {
       className: "lbl",
       style: {
-        marginBottom: 10
+        marginBottom: 8
       }
-    }, "日別売上"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        alignItems: "flex-end",
-        gap: 4,
-        height: 100,
-        marginBottom: 4
-      }
-    }, days.map((d, i) => /*#__PURE__*/React.createElement("div", {
-      key: i,
-      style: {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 3
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: "relative",
-        width: "100%",
-        height: 80
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: `${d.total / maxDay * 80}px`,
-        background: "#FF5722",
-        borderRadius: "3px 3px 0 0"
-      }
-    })), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        color: "#9CA3AF",
-        textAlign: "center",
-        lineHeight: 1.2
-      }
-    }, d.label)))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        justifyContent: "space-between",
-        marginBottom: 16
-      }
-    }, days.map((d, i) => /*#__PURE__*/React.createElement("span", {
-      key: i,
-      style: {
-        flex: 1,
-        fontSize: 9,
-        color: "#6B7280",
-        textAlign: "center"
-      }
-    }, d.total >= 1000 ? `${Math.round(d.total / 100) / 10}k` : d.total || ""))), /*#__PURE__*/React.createElement("div", {
+    }, "日別売上・件数・時給"), (() => {
+      if (!days.length) return null;
+      const maxRev = Math.max(...days.map(d => d.total), 1);
+      const maxCount = Math.max(...days.map(d => d.count), 1);
+      const maxRate = Math.max(...days.map(d => d.rate || 0), 1);
+      const W = 300,
+        H = 90,
+        n = days.length,
+        step = W / n;
+      const xp = i => step * i + step / 2;
+      const bw = Math.max(step * 0.5, 4);
+      const yR = v => H - v / maxRev * H;
+      const yC = v => H - v / maxCount * H;
+      const yHR = v => H - v / maxRate * H;
+      const cPts = days.map((d, i) => `${xp(i)},${yC(d.count)}`).join(' ');
+      const hPts = days.filter(d => d.rate > 0).map(d => `${xp(days.indexOf(d))},${yHR(d.rate)}`).join(' ');
+      return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("svg", {
+        viewBox: `0 0 ${W} ${H}`,
+        style: {
+          width: "100%",
+          height: 90,
+          display: "block",
+          overflow: "visible"
+        }
+      }, days.map((d, i) => /*#__PURE__*/React.createElement("rect", {
+        key: i,
+        x: xp(i) - bw / 2,
+        y: yR(d.total),
+        width: bw,
+        height: H - yR(d.total),
+        fill: "#FF572250",
+        rx: "2"
+      })), n > 1 && /*#__PURE__*/React.createElement("polyline", {
+        points: cPts,
+        fill: "none",
+        stroke: "#3B82F6",
+        strokeWidth: "1.5"
+      }), days.map((d, i) => /*#__PURE__*/React.createElement("circle", {
+        key: i,
+        cx: xp(i),
+        cy: yC(d.count),
+        r: "2.5",
+        fill: "#3B82F6"
+      })), days.filter(d => d.rate > 0).length > 1 && /*#__PURE__*/React.createElement("polyline", {
+        points: hPts,
+        fill: "none",
+        stroke: "#10B981",
+        strokeWidth: "1.5"
+      }), days.filter(d => d.rate > 0).map((d, i) => /*#__PURE__*/React.createElement("circle", {
+        key: i,
+        cx: xp(days.indexOf(d)),
+        cy: yHR(d.rate),
+        r: "2.5",
+        fill: "#10B981"
+      }))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex"
+        }
+      }, days.map((d, i) => /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          flex: 1,
+          fontSize: 9,
+          color: "#9CA3AF",
+          textAlign: "center"
+        }
+      }, d.label))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 12,
+          marginTop: 8,
+          fontSize: 10
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 3
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          width: 10,
+          height: 3,
+          background: "#FF572250",
+          display: "inline-block",
+          borderRadius: 1
+        }
+      }), "売上"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 3
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          width: 10,
+          height: 2,
+          background: "#3B82F6",
+          display: "inline-block",
+          borderRadius: 1
+        }
+      }), "件数"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 3
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          width: 10,
+          height: 2,
+          background: "#10B981",
+          display: "inline-block",
+          borderRadius: 1
+        }
+      }), "時給")));
+    })(), /*#__PURE__*/React.createElement("div", {
       className: "lbl",
       style: {
         marginBottom: 10
