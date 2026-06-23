@@ -2029,6 +2029,7 @@ function AnalysisTab({
   const [editMonth, setEditMonth] = useState(null);
   const [expInput, setExpInput] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(null);
   const [newAK, setNewAK] = useState("");
   const [saved, setSaved] = useState(false);
   const currentAK = localStorage.getItem("drv_akey") || "";
@@ -2108,7 +2109,13 @@ function AnalysisTab({
     style: {
       marginBottom: 12
     }
-  }, "月別売上・利益"), /*#__PURE__*/React.createElement("div", {
+  }, "月別売上・利益 ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#9CA3AF",
+      fontWeight: 400
+    }
+  }, "（月をタップ→詳細）")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "flex-end",
@@ -2118,12 +2125,16 @@ function AnalysisTab({
     }
   }, monthArr.map((m, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
+    onClick: () => setSelectedMonth(selectedMonth === m.key ? null : m.key),
     style: {
       flex: 1,
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      gap: 4
+      gap: 4,
+      cursor: "pointer",
+      opacity: selectedMonth && selectedMonth !== m.key ? 0.4 : 1,
+      transition: "opacity .2s"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2138,7 +2149,7 @@ function AnalysisTab({
       left: 0,
       right: 0,
       height: `${m.revenue / maxRev * 90}px`,
-      background: "#FF572230",
+      background: selectedMonth === m.key ? "#FF5722" : "#FF572230",
       borderRadius: "3px 3px 0 0"
     }
   }), /*#__PURE__*/React.createElement("div", {
@@ -2148,13 +2159,14 @@ function AnalysisTab({
       left: "20%",
       right: "20%",
       height: `${Math.max(m.profit, 0) / maxRev * 90}px`,
-      background: "#FF5722",
+      background: selectedMonth === m.key ? "#CC3300" : "#FF5722",
       borderRadius: "3px 3px 0 0"
     }
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
-      color: "#6B7280"
+      color: selectedMonth === m.key ? "#FF5722" : "#6B7280",
+      fontWeight: selectedMonth === m.key ? 700 : 400
     }
   }, m.label)))), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2192,7 +2204,188 @@ function AnalysisTab({
       display: "inline-block",
       borderRadius: 2
     }
-  }), " 利益")))), /*#__PURE__*/React.createElement("div", {
+  }), " 利益")))), selectedMonth && (() => {
+    const m = monthArr.find(x => x.key === selectedMonth);
+    if (!m) return null;
+    const daySess = sessions.filter(s => s.date.startsWith(selectedMonth));
+    const byDate = {};
+    daySess.forEach(s => {
+      if (!byDate[s.date]) byDate[s.date] = [];
+      byDate[s.date].push(s);
+    });
+    const days = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, ss]) => ({
+      label: `${parseInt(date.slice(5, 7))}/${parseInt(date.slice(8, 10))}`,
+      total: ss.reduce((a, s) => a + sessTotal(s), 0),
+      count: ss.reduce((a, s) => a + (sessCount(s) || 0), 0)
+    }));
+    const maxDay = Math.max(...days.map(d => d.total), 1);
+    const svcMap = {};
+    daySess.forEach(s => {
+      if (!svcMap[s.service]) svcMap[s.service] = 0;
+      svcMap[s.service] += sessTotal(s);
+    });
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "0 16px 16px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "card",
+      style: {
+        padding: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        fontWeight: 700
+      }
+    }, toMonthLabel(selectedMonth), " 詳細"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setSelectedMonth(null),
+      style: {
+        background: "none",
+        border: "1px solid #E5E7EB",
+        borderRadius: 8,
+        padding: "4px 10px",
+        fontSize: 12,
+        cursor: "pointer",
+        color: "#374151",
+        fontFamily: "inherit"
+      }
+    }, "× 閉じる")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "repeat(3,1fr)",
+        gap: 8,
+        marginBottom: 16
+      }
+    }, [["売上", yen(m.revenue)], ["利益", yen(m.profit)], ["時給", m.hours > 0 ? yen(Math.round(m.profit / m.hours)) : "-"], ["稼働日", `${m.days}日`], ["件数", `${m.count}件`], ["時間", `${m.hours.toFixed(1)}h`]].map(([l, v]) => /*#__PURE__*/React.createElement("div", {
+      key: l,
+      style: {
+        background: "#F9FAFB",
+        borderRadius: 10,
+        padding: "10px 8px",
+        textAlign: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "lbl"
+    }, l), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        fontWeight: 700
+      }
+    }, v)))), /*#__PURE__*/React.createElement("div", {
+      className: "lbl",
+      style: {
+        marginBottom: 10
+      }
+    }, "日別売上"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "flex-end",
+        gap: 4,
+        height: 100,
+        marginBottom: 4
+      }
+    }, days.map((d, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 3
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "relative",
+        width: "100%",
+        height: 80
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: `${d.total / maxDay * 80}px`,
+        background: "#FF5722",
+        borderRadius: "3px 3px 0 0"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#9CA3AF",
+        textAlign: "center",
+        lineHeight: 1.2
+      }
+    }, d.label)))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 16
+      }
+    }, days.map((d, i) => /*#__PURE__*/React.createElement("span", {
+      key: i,
+      style: {
+        flex: 1,
+        fontSize: 9,
+        color: "#6B7280",
+        textAlign: "center"
+      }
+    }, d.total >= 1000 ? `${Math.round(d.total / 100) / 10}k` : d.total || ""))), /*#__PURE__*/React.createElement("div", {
+      className: "lbl",
+      style: {
+        marginBottom: 10
+      }
+    }, "サービス別"), Object.entries(svcMap).sort(([, a], [, b]) => b - a).map(([svc, amt]) => /*#__PURE__*/React.createElement("div", {
+      key: svc,
+      style: {
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: SVC_CLR[svc],
+        fontWeight: 600,
+        fontSize: 13
+      }
+    }, svc), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700,
+        fontSize: 13
+      }
+    }, yen(amt), " ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "#9CA3AF",
+        fontWeight: 400
+      }
+    }, Math.round(amt / m.revenue * 100), "%"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#F3F4F6",
+        borderRadius: 6,
+        height: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: `${amt / m.revenue * 100}%`,
+        height: "100%",
+        background: SVC_CLR[svc],
+        borderRadius: 6
+      }
+    }))))));
+  })(), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "0 16px 16px"
     }
