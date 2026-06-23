@@ -822,13 +822,13 @@ function HomeTab({
       letterSpacing: -2,
       lineHeight: 1.1
     }
-  }, yen(mRev - mExp)), /*#__PURE__*/React.createElement("div", {
+  }, yen(mRev)), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: "#6B7280",
       marginTop: 5
     }
-  }, yen(mRev), " 売上 ー ", yen(mExp), " 経費"), hourlyRate && /*#__PURE__*/React.createElement("div", {
+  }, "経費 ", yen(mExp), " ／ 手取り ", yen(mRev - mExp)), hourlyRate && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       fontWeight: 700,
