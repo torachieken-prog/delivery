@@ -540,6 +540,16 @@ function App() {
     sessRef.current = next;
     forceSave(next);
   }, [forceSave]);
+  const updateDayLog = useCallback((date, updates) => {
+    const next = {
+      ...logRef.current,
+      [date]: {
+        ...(logRef.current[date] || {}),
+        ...updates
+      }
+    };
+    updLogs(next);
+  }, [updLogs]);
   const saveSession = useCallback(s => {
     const next = [...sessRef.current.filter(x => x.id !== s.id), s].sort((a, b) => b.date.localeCompare(a.date));
     setSessions(next);
@@ -712,7 +722,8 @@ function App() {
     onOpenDetail: setDetailDate,
     viewMode: logViewMode,
     setViewMode: setLogViewMode,
-    logs: logs
+    logs: logs,
+    onUpdateDayLog: updateDayLog
   }), tab === "analysis" && /*#__PURE__*/React.createElement(AnalysisTab, {
     sessions: sessions,
     expenses: expenses,
@@ -1603,7 +1614,8 @@ function LogTab({
   onOpenDetail,
   viewMode,
   setViewMode,
-  logs
+  logs,
+  onUpdateDayLog
 }) {
   const mode = viewMode || "daily";
   const setMode = setViewMode;
@@ -1669,7 +1681,8 @@ function LogTab({
     setOpenId: setOpenId,
     onDelete: onDelete,
     onOpenDetail: onOpenDetail,
-    logs: logs
+    logs: logs,
+    onUpdateDayLog: onUpdateDayLog
   }))), !sessions.length && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 40,
@@ -1866,7 +1879,8 @@ function DayGroup({
   sessions,
   onDelete,
   onOpenDetail,
-  logs
+  logs,
+  onUpdateDayLog
 }) {
   const byDate = {};
   sessions.forEach(s => {
@@ -1923,10 +1937,55 @@ function DayGroup({
       }
     }, s.service))), /*#__PURE__*/React.createElement("div", {
       style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
         fontSize: 12,
         color: "#6B7280"
       }
-    }, dayCount ? `${dayCount}件` : "", dayHours ? `　${dayHours.toFixed(1)}h` : "", dayDist ? `　${dayDist.toFixed(1)}km` : "")), /*#__PURE__*/React.createElement("div", {
+    }, dayCount ? `${dayCount}件` : "", dayDist ? `　${dayDist.toFixed(1)}km` : ""), /*#__PURE__*/React.createElement("div", {
+      onClick: e => e.stopPropagation(),
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: "#9CA3AF"
+      }
+    }, "⏱実稼働"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      step: ".5",
+      value: logs && logs[date]?.actual_time || "",
+      onChange: e => {
+        const v = parseFloat(e.target.value) || 0;
+        if (onUpdateDayLog) onUpdateDayLog(date, {
+          actual_time: v
+        });
+      },
+      onClick: e => e.stopPropagation(),
+      placeholder: "-",
+      style: {
+        width: 44,
+        fontSize: 12,
+        padding: "2px 4px",
+        border: "1px solid #E5E7EB",
+        borderRadius: 6,
+        textAlign: "center",
+        background: "#FFF7F0"
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: "#9CA3AF"
+      }
+    }, "h")))), /*#__PURE__*/React.createElement("div", {
       style: {
         textAlign: "right"
       }
