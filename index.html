@@ -969,6 +969,8 @@ function AddTab({
     pick: "",
     drop: ""
   }]);
+  const [startT, setStartT] = useState("");
+  const [endT, setEndT] = useState("");
   const calcT = (s, e) => {
     if (!s || !e) return 0;
     const [h1, m1] = s.split(':').map(Number);
@@ -1003,16 +1005,14 @@ function AddTab({
       setErr("金額を1件以上入力してください");
       return;
     }
-    const st = mRows.startT || "",
-      et = mRows.endT || "";
-    const autoT = calcT(st, et);
+    const autoT = calcT(startT, endT);
     onSave({
       id: uid(),
       date: mDate,
       service: mSvc,
       total_time: autoT || parseFloat(mTime) || 0,
-      start_time: st,
-      end_time: et,
+      start_time: startT,
+      end_time: endT,
       memo: "",
       deliveries: dels
     });
@@ -1067,52 +1067,64 @@ function AddTab({
     key: s
   }, s)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "稼働時間"), /*#__PURE__*/React.createElement("div", {
+  }, "稼働時間（開始〜終了で自動計算）"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
-      alignItems: "center"
+      alignItems: "center",
+      marginTop: 4
     }
   }, /*#__PURE__*/React.createElement("input", {
     type: "time",
-    value: mRows.startT || "",
-    onChange: e => setMRows(p => ({
-      ...p,
-      startT: e.target.value
-    })),
+    value: startT,
+    onChange: e => {
+      setStartT(e.target.value);
+      const t = calcT(e.target.value, endT);
+      if (t) setMTime(String(t));
+    },
     style: {
       flex: 1
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      color: "#9CA3AF"
+      color: "#9CA3AF",
+      flexShrink: 0
     }
   }, "〜"), /*#__PURE__*/React.createElement("input", {
     type: "time",
-    value: mRows.endT || "",
-    onChange: e => setMRows(p => ({
-      ...p,
-      endT: e.target.value
-    })),
+    value: endT,
+    onChange: e => {
+      setEndT(e.target.value);
+      const t = calcT(startT, e.target.value);
+      if (t) setMTime(String(t));
+    },
     style: {
       flex: 1
     }
-  })), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      color: "#FF5722",
+      flexShrink: 0,
+      minWidth: 36
+    }
+  }, mTime ? mTime + "h" : "-")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#9CA3AF",
       marginTop: 4
     }
-  }, "または直接入力：", /*#__PURE__*/React.createElement("input", {
+  }, "直接入力も可：", /*#__PURE__*/React.createElement("input", {
     type: "number",
     step: ".5",
     value: mTime,
     onChange: e => setMTime(e.target.value),
     placeholder: "h",
     style: {
-      width: 64,
+      width: 60,
       display: "inline",
-      padding: "4px 8px",
+      padding: "4px 6px",
       fontSize: 13
     }
   }), " h")), /*#__PURE__*/React.createElement("div", {
@@ -1409,8 +1421,13 @@ function ConfirmScreen({
       const st = e.target.value;
       const et = draft.end_time || "";
       const d = calcDraftTime(st, et);
-      upd("start_time", st);
-      if (d) upd("total_time", d);
+      setDraft(p => ({
+        ...p,
+        start_time: st,
+        ...(d ? {
+          total_time: d
+        } : {})
+      }));
     },
     style: {
       flex: 1
@@ -1427,8 +1444,13 @@ function ConfirmScreen({
       const et = e.target.value;
       const st = draft.start_time || "";
       const d = calcDraftTime(st, et);
-      upd("end_time", et);
-      if (d) upd("total_time", d);
+      setDraft(p => ({
+        ...p,
+        end_time: et,
+        ...(d ? {
+          total_time: d
+        } : {})
+      }));
     },
     style: {
       flex: 1
