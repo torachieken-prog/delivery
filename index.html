@@ -920,7 +920,9 @@ function HomeTab({
       const ss = byDate[date];
       const dayTotal = ss.reduce((a, s) => a + sessTotal(s), 0);
       const dayCount = ss.reduce((a, s) => a + (sessCount(s) || 0), 0);
-      const dayHours = ss.reduce((a, s) => a + (s.total_time || 0), 0);
+      const rawDayHours = ss.reduce((a, s) => a + (s.total_time || 0), 0);
+      const dayHours = logs && logs[date]?.actual_time || rawDayHours;
+      const isActual = !!(logs && logs[date]?.actual_time);
       const multi = ss.length > 1;
       return /*#__PURE__*/React.createElement("div", {
         key: date,
@@ -969,11 +971,23 @@ function HomeTab({
         }
       }, yen(sessTotal(s))))), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 11,
-          color: "#9CA3AF",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
           marginTop: 5
         }
-      }, dayCount ? `${dayCount}件` : "", dayHours ? `　${dayHours.toFixed(1)}h` : ""));
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          color: "#9CA3AF"
+        }
+      }, dayCount ? `${dayCount}件` : "", dayHours ? `　${dayHours.toFixed(1)}h${isActual ? "(実)" : ""}` : ""), dayHours > 0 && dayTotal > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 12,
+          fontWeight: 700,
+          color: "#FF5722"
+        }
+      }, yen(Math.round(dayTotal / dayHours)), "/h")));
     });
   })());
 }
