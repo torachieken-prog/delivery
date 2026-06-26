@@ -54,6 +54,9 @@ const toJpDate = d => {
 };
 const toMonthLabel = k => `${k.slice(0, 4)}年${parseInt(k.slice(5))}月`;
 const sessTotal = s => s.deliveries.reduce((a, d) => a + (d.amount || 0), 0) + (s.bonus || 0);
+const sessDelivTotal = s => s.deliveries.filter(d => !d._quest).reduce((a, d) => a + (d.amount || 0), 0);
+const sessQuestTotal = s => s.deliveries.filter(d => d._quest).reduce((a, d) => a + (d.amount || 0), 0) + (s.bonus || 0);
+const isQuestName = n => n && /クエスト|ミッション|ボーナス|quest|mission/i.test(n);
 const sessCount = s => {
   const det = s.deliveries.filter(d => !d._agg);
   return det.length > 0 ? det.length : s.deliveries[0]?._count || null;
@@ -301,7 +304,7 @@ async function analyzeImg(ak, b64, mime) {
           }
         }, {
           type: "text",
-          text: `このデリバリーアプリのスクリーンショットから配達記録を抽出してください。以下のJSONのみ返してください（コードブロック・説明文不要）:\n{"date":"YYYY-MM-DD","service":"ロケット","total_amount":数値,"start_time":"HH:MM","end_time":"HH:MM","bonus":数値,"deliveries":[{"time":"HH:MM","amount":数値,"distance_km":数値またはnull,"pick":"店舗名","drop":"配達先エリア"}]}\nserviceは「ロケット」「Uber Eats」「出前館」「その他」から選択。bonusはミッションボーナス・インセンティブ等の合計金額（なければ0）。日付に年の記載がない場合は必ず${new Date().getFullYear()}年として扱う。完全に日付不明なら今日(${new Date().toISOString().slice(0, 10)})。start_timeは稼働開始時刻（画面に明示されていなければ最初の配達完了時刻）、end_timeは稼働終了時刻（明示されていなければ最後の配達完了時刻）。距離不明ならnull。`
+          text: `このデリバリーアプリのスクリーンショットから配達記録を抽出してください。以下のJSONのみ返してください（コードブロック・説明文不要）:\n{"date":"YYYY-MM-DD","service":"ロケット","total_amount":数値,"start_time":"HH:MM","end_time":"HH:MM","bonus":数値,"deliveries":[{"time":"HH:MM","amount":数値,"distance_km":数値またはnull,"pick":"店舗名またはクエスト名","drop":"配達先エリア","_quest":trueまたはfalse}]}\nserviceは「ロケット」「Uber Eats」「出前館」「その他」から選択。bonusはセッション全体のミッション報酬（なければ0）。各配達の_questは店舗名でなくクエスト名・ミッション名・ボーナスの場合はtrue、通常配達はfalse。日付に年の記載がない場合は必ず${new Date().getFullYear()}年として扱う。完全に日付不明なら今日(${new Date().toISOString().slice(0, 10)})。start_timeは稼働開始時刻（画面に明示されていなければ最初の配達完了時刻）、end_timeは稼働終了時刻（明示されていなければ最後の配達完了時刻）。距離不明ならnull。`
         }]
       }]
     })
@@ -590,7 +593,8 @@ function App() {
         distance: d.distance_km || null,
         pick: d.pick || "",
         drop: d.drop || "",
-        memo: ""
+        memo: "",
+        _quest: !!(d._quest || isQuestName(d.pick))
       }));
       if (!dels.length) dels.push({
         id: uid(),
@@ -972,7 +976,7 @@ function HomeTab({
           fontSize: 15,
           fontWeight: 700
         }
-      }, yen(sessTotal(s)))), s.bonus > 0 && /*#__PURE__*/React.createElement("div", {
+      }, yen(sessTotal(s)))), sessQuestTotal(s) > 0 && /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
           justifyContent: "space-between",
@@ -983,13 +987,13 @@ function HomeTab({
           fontSize: 11,
           color: "#9CA3AF"
         }
-      }, "🎯 ミッション込み（配達 ", yen(sessTotal(s) - (s.bonus || 0)), "）"), /*#__PURE__*/React.createElement("span", {
+      }, "🎯 クエスト/ミッション含（配達 ", yen(sessDelivTotal(s)), "）"), /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 11,
           color: "#FF5722",
           fontWeight: 600
         }
-      }, "+", yen(s.bonus))))), /*#__PURE__*/React.createElement("div", {
+      }, "+", yen(sessQuestTotal(s)))))), /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
           alignItems: "center",
@@ -1748,12 +1752,16 @@ function SessCard({
   onToggle,
   onDelete
 }) {
-  const delivTotal = s.deliveries.reduce((a, d) => a + (d.amount || 0), 0);
+  const delivTotal = sessDelivTotal(s);
+  const questTotal = sessQuestTotal(s);
   const total = sessTotal(s);
   const cnt = sessCount(s);
   const dist = sessDist(s);
   const hasDetail = s.deliveries.some(d => !d._agg);
   const color = SVC_CLR[s.service];
+  const regDelivs = s.deliveries.filter(d => !d._quest && !d._agg);
+  const questDelivs = s.deliveries.filter(d => d._quest && !d._agg);
+  const hasQuest = questDelivs.length > 0 || (s.bonus || 0) > 0;
   return /*#__PURE__*/React.createElement("div", {
     style: {
       borderBottom: "1px solid #2A2D3A"
@@ -1776,7 +1784,8 @@ function SessCard({
       display: "flex",
       alignItems: "center",
       gap: 8,
-      marginBottom: 3
+      marginBottom: 3,
+      flexWrap: "wrap"
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -1792,7 +1801,7 @@ function SessCard({
       borderRadius: 20,
       fontWeight: 600
     }
-  }, s.service), s.bonus > 0 && /*#__PURE__*/React.createElement("span", {
+  }, s.service), hasQuest && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 10,
       background: "#FFF0EB",
@@ -1801,7 +1810,7 @@ function SessCard({
       borderRadius: 20,
       fontWeight: 600
     }
-  }, "🎯 ミッション含")), /*#__PURE__*/React.createElement("div", {
+  }, "🎯 クエスト含")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#6B7280"
@@ -1830,61 +1839,57 @@ function SessCard({
       background: "#F3F4F6",
       padding: "0 16px 16px"
     }
-  }, s.bonus > 0 && /*#__PURE__*/React.createElement("div", {
+  }, hasQuest && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 12,
       padding: "8px 10px",
       background: "#FFF0EB",
       borderRadius: 8,
-      display: "flex",
-      justifyContent: "space-between",
       fontSize: 12
     }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       color: "#9CA3AF",
+      marginBottom: 4,
+      fontSize: 11
+    }
+  }, "売上内訳"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
       marginBottom: 2
     }
-  }, "売上内訳"), /*#__PURE__*/React.createElement("div", null, "🛵 配達料 ", /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", null, "🛵 配達料（", regDelivs.length, "件）"), /*#__PURE__*/React.createElement("span", {
     style: {
       fontWeight: 600
     }
   }, yen(delivTotal))), /*#__PURE__*/React.createElement("div", {
     style: {
+      display: "flex",
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
       color: "#FF5722"
     }
-  }, "🎯 ミッション/クエスト ", /*#__PURE__*/React.createElement("span", {
+  }, "🎯 クエスト/ボーナス"), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontWeight: 600
+      fontWeight: 600,
+      color: "#FF5722"
     }
-  }, "+", yen(s.bonus)))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: "right",
-      alignSelf: "center"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: "#9CA3AF"
-    }
-  }, "合計"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 700
-    }
-  }, yen(total)))), hasDetail ? /*#__PURE__*/React.createElement("div", {
+  }, yen(questTotal)))), hasDetail && regDelivs.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       paddingTop: 12
     }
-  }, s.deliveries.map((d, i) => /*#__PURE__*/React.createElement("div", {
+  }, regDelivs.map((d, i) => /*#__PURE__*/React.createElement("div", {
     key: d.id,
     style: {
       display: "flex",
       gap: 12,
-      paddingBottom: i < s.deliveries.length - 1 ? 16 : 0,
+      paddingBottom: i < regDelivs.length - 1 ? 14 : 0,
       position: "relative"
     }
-  }, i < s.deliveries.length - 1 && /*#__PURE__*/React.createElement("div", {
+  }, i < regDelivs.length - 1 && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "absolute",
       left: 4,
@@ -1904,10 +1909,7 @@ function SessCard({
     }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
+      flex: 1,
       display: "flex",
       justifyContent: "space-between"
     }
@@ -1938,7 +1940,59 @@ function SessCard({
       fontWeight: 700,
       fontSize: 15
     }
-  }, yen(d.amount))))))) : /*#__PURE__*/React.createElement("div", {
+  }, yen(d.amount)))))), questDelivs.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      paddingTop: 10,
+      borderTop: "1px dashed #FFD5C2"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#FF5722",
+      marginBottom: 8
+    }
+  }, "🎯 クエスト/ボーナス明細"), questDelivs.map(d => /*#__PURE__*/React.createElement("div", {
+    key: d.id,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, d.time), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#FF5722"
+    }
+  }, d.pick || "クエスト")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      color: "#FF5722"
+    }
+  }, yen(d.amount)))), s.bonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginTop: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#FF5722"
+    }
+  }, "セッションボーナス"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      color: "#FF5722"
+    }
+  }, yen(s.bonus)))), !hasDetail && /*#__PURE__*/React.createElement("div", {
     style: {
       paddingTop: 12,
       fontSize: 13,
@@ -2298,7 +2352,7 @@ function AnalysisTab({
       if (!byDate[s.date]) byDate[s.date] = [];
       byDate[s.date].push(s);
     });
-    const totalBonus = daySess.reduce((a, s) => a + (s.bonus || 0), 0);
+    const totalBonus = daySess.reduce((a, s) => a + sessQuestTotal(s), 0);
     const totalDelivery = m.revenue - totalBonus;
     const days = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, ss]) => {
       const total = ss.reduce((a, s) => a + sessTotal(s), 0);
@@ -2416,7 +2470,7 @@ function AnalysisTab({
         fontSize: 13,
         color: "#FF5722"
       }
-    }, "🎯 ミッション/クエスト"), /*#__PURE__*/React.createElement("span", {
+    }, "🎯 クエスト/ミッション"), /*#__PURE__*/React.createElement("span", {
       style: {
         fontWeight: 700,
         color: "#FF5722"
@@ -3523,7 +3577,23 @@ function DetailPage({
       fontSize: 12,
       color: "#9CA3AF"
     }
-  }, "#", i + 1), editDraft.deliveries.length > 1 && /*#__PURE__*/React.createElement("button", {
+  }, "#", i + 1), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 4,
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: !!d._quest,
+    onChange: e => updDel(d.id, "_quest", e.target.checked)
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: d._quest ? "#FF5722" : "#9CA3AF"
+    }
+  }, "🎯 クエスト")), editDraft.deliveries.length > 1 && /*#__PURE__*/React.createElement("button", {
     onClick: () => rmDel(d.id),
     style: {
       background: "none",
