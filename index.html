@@ -950,13 +950,14 @@ function HomeTab({
           fontWeight: 700,
           color: "#9CA3AF"
         }
-      }, "計 ", yen(dayTotal))), ss.map((s, i) => /*#__PURE__*/React.createElement("div", {
-        key: s.id,
+      }, "計 ", yen(dayTotal))), ss.map((s, i) => /*#__PURE__*/React.createElement(React.Fragment, {
+        key: s.id
+      }, /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: "4px 0 4px 10px",
+          padding: "4px 0 2px 10px",
           borderLeft: `3px solid ${SVC_CLR[s.service]}`,
           marginTop: i > 0 ? 4 : 0
         }
@@ -971,7 +972,24 @@ function HomeTab({
           fontSize: 15,
           fontWeight: 700
         }
-      }, yen(sessTotal(s))))), /*#__PURE__*/React.createElement("div", {
+      }, yen(sessTotal(s)))), s.bonus > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          padding: "0 0 2px 22px"
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          color: "#9CA3AF"
+        }
+      }, "🎯 ミッション込み（配達 ", yen(sessTotal(s) - (s.bonus || 0)), "）"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          color: "#FF5722",
+          fontWeight: 600
+        }
+      }, "+", yen(s.bonus))))), /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
           alignItems: "center",
@@ -2078,7 +2096,8 @@ function AnalysisTab({
       profit: v.revenue - (expenses[k] || 0),
       hours,
       count: v.count,
-      days: v.days.size
+      days: v.days.size,
+      bonus: v.bonus || 0
     };
   });
   const maxRev = Math.max(...monthArr.map(m => m.revenue), 1);
@@ -2237,6 +2256,8 @@ function AnalysisTab({
       if (!byDate[s.date]) byDate[s.date] = [];
       byDate[s.date].push(s);
     });
+    const totalBonus = daySess.reduce((a, s) => a + (s.bonus || 0), 0);
+    const totalDelivery = m.revenue - totalBonus;
     const days = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, ss]) => {
       const total = ss.reduce((a, s) => a + sessTotal(s), 0);
       const count = ss.reduce((a, s) => a + (sessCount(s) || 0), 0);
@@ -2292,7 +2313,7 @@ function AnalysisTab({
         display: "grid",
         gridTemplateColumns: "repeat(3,1fr)",
         gap: 8,
-        marginBottom: 16
+        marginBottom: totalBonus > 0 ? 8 : 16
       }
     }, [["売上", yen(m.revenue)], ["利益", yen(m.profit)], ["時給", m.hours > 0 ? yen(Math.round(m.revenue / m.hours)) : "-"], ["稼働日", `${m.days}日`], ["件数", `${m.count}件`], ["時間", `${m.hours.toFixed(1)}h`]].map(([l, v]) => /*#__PURE__*/React.createElement("div", {
       key: l,
@@ -2309,7 +2330,62 @@ function AnalysisTab({
         fontSize: 14,
         fontWeight: 700
       }
-    }, v)))), /*#__PURE__*/React.createElement("div", {
+    }, v)))), totalBonus > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#FFF7F0",
+        borderRadius: 10,
+        padding: "10px 12px",
+        border: "1px solid #FFD5C2",
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#9CA3AF",
+        marginBottom: 6
+      }
+    }, "売上内訳"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13
+      }
+    }, "🛵 配達料"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700
+      }
+    }, yen(totalDelivery), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "#9CA3AF",
+        marginLeft: 4
+      }
+    }, Math.round(totalDelivery / m.revenue * 100), "%"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        color: "#FF5722"
+      }
+    }, "🎯 ミッション/クエスト"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700,
+        color: "#FF5722"
+      }
+    }, yen(totalBonus), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "#9CA3AF",
+        marginLeft: 4
+      }
+    }, Math.round(totalBonus / m.revenue * 100), "%")))), /*#__PURE__*/React.createElement("div", {
       className: "lbl",
       style: {
         marginBottom: 8
@@ -2544,7 +2620,13 @@ function AnalysisTab({
       color: "#6B7280",
       marginTop: 3
     }
-  }, m.days, "日稼働\u3000", m.count, "件\u3000", m.hours.toFixed(1), "h")), editMonth === m.key && /*#__PURE__*/React.createElement("div", {
+  }, m.days, "日稼働\u3000", m.count, "件\u3000", m.hours.toFixed(1), "h"), m.bonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#FF5722",
+      marginTop: 2
+    }
+  }, "🎯 ミッション ", yen(m.bonus), "（配達 ", yen(m.revenue - m.bonus), "）")), editMonth === m.key && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "10px 16px",
       background: "#F3F4F6",
