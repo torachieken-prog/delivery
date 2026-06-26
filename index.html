@@ -53,7 +53,7 @@ const toJpDate = d => {
   return `${dt.getMonth() + 1}/${dt.getDate()}(${"日月火水木金土"[dt.getDay()]})`;
 };
 const toMonthLabel = k => `${k.slice(0, 4)}年${parseInt(k.slice(5))}月`;
-const sessTotal = s => s.deliveries.reduce((a, d) => a + (d.amount || 0), 0);
+const sessTotal = s => s.deliveries.reduce((a, d) => a + (d.amount || 0), 0) + (s.bonus || 0);
 const sessCount = s => {
   const det = s.deliveries.filter(d => !d._agg);
   return det.length > 0 ? det.length : s.deliveries[0]?._count || null;
@@ -301,7 +301,7 @@ async function analyzeImg(ak, b64, mime) {
           }
         }, {
           type: "text",
-          text: `このデリバリーアプリのスクリーンショットから配達記録を抽出してください。以下のJSONのみ返してください（コードブロック・説明文不要）:\n{"date":"YYYY-MM-DD","service":"ロケット","total_amount":数値,"start_time":"HH:MM","end_time":"HH:MM","deliveries":[{"time":"HH:MM","amount":数値,"distance_km":数値またはnull,"pick":"店舗名","drop":"配達先エリア"}]}\nserviceは「ロケット」「Uber Eats」「出前館」「その他」から選択。日付に年の記載がない場合は必ず${new Date().getFullYear()}年として扱う。完全に日付不明なら今日(${new Date().toISOString().slice(0, 10)})。start_timeは稼働開始時刻（画面に明示されていなければ最初の配達完了時刻）、end_timeは稼働終了時刻（明示されていなければ最後の配達完了時刻）。距離不明ならnull。`
+          text: `このデリバリーアプリのスクリーンショットから配達記録を抽出してください。以下のJSONのみ返してください（コードブロック・説明文不要）:\n{"date":"YYYY-MM-DD","service":"ロケット","total_amount":数値,"start_time":"HH:MM","end_time":"HH:MM","bonus":数値,"deliveries":[{"time":"HH:MM","amount":数値,"distance_km":数値またはnull,"pick":"店舗名","drop":"配達先エリア"}]}\nserviceは「ロケット」「Uber Eats」「出前館」「その他」から選択。bonusはミッションボーナス・インセンティブ等の合計金額（なければ0）。日付に年の記載がない場合は必ず${new Date().getFullYear()}年として扱う。完全に日付不明なら今日(${new Date().toISOString().slice(0, 10)})。start_timeは稼働開始時刻（画面に明示されていなければ最初の配達完了時刻）、end_timeは稼働終了時刻（明示されていなければ最後の配達完了時刻）。距離不明ならnull。`
         }]
       }]
     })
@@ -618,6 +618,7 @@ function App() {
         total_time: autoTime(st, et),
         start_time: st,
         end_time: et,
+        bonus: result.bonus || 0,
         memo: "",
         deliveries: dels
       });
@@ -1449,6 +1450,23 @@ function ConfirmScreen({
   }, SERVICES.map(s => /*#__PURE__*/React.createElement("option", {
     key: s
   }, s))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "ミッションボーナス (¥)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: draft.bonus || "",
+    onChange: e => upd("bonus", parseFloat(e.target.value) || 0),
+    placeholder: "0（なければ空欄）"
+  }), draft.bonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#FF5722",
+      marginTop: 4
+    }
+  }, "配達料 ", yen(draft.deliveries.reduce((a, d) => a + (d.amount || 0), 0)), " + ボーナス ", yen(draft.bonus), " = 合計 ", yen(sessTotal(draft)))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }
@@ -3191,7 +3209,13 @@ function DetailPage({
       color: "#FF5722",
       fontWeight: 600
     }
-  }, yen(Math.round(dayTotal / log.actual_time)), "/h")))), sessions.map(s => editId === s.id && editDraft ? /*#__PURE__*/React.createElement("div", {
+  }, yen(Math.round(dayTotal / log.actual_time)), "/h")), sessions.some(s => s.bonus > 0) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#FF5722",
+      marginTop: 4
+    }
+  }, "🎯 ミッションボーナス含む: ", sessions.filter(s => s.bonus > 0).map(s => `${s.service} +${yen(s.bonus)}`).join('、')))), sessions.map(s => editId === s.id && editDraft ? /*#__PURE__*/React.createElement("div", {
     key: s.id,
     style: {
       padding: "8px 16px 0"
@@ -3250,6 +3274,20 @@ function DetailPage({
   }, SERVICES.map(sv => /*#__PURE__*/React.createElement("option", {
     key: sv
   }, sv))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lbl"
+  }, "ミッションボーナス (¥)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: editDraft.bonus || "",
+    onChange: e => setEditDraft(d => ({
+      ...d,
+      bonus: parseFloat(e.target.value) || 0
+    })),
+    placeholder: "0"
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 12
     }
