@@ -1748,6 +1748,7 @@ function SessCard({
   onToggle,
   onDelete
 }) {
+  const delivTotal = s.deliveries.reduce((a, d) => a + (d.amount || 0), 0);
   const total = sessTotal(s);
   const cnt = sessCount(s);
   const dist = sessDist(s);
@@ -1791,7 +1792,16 @@ function SessCard({
       borderRadius: 20,
       fontWeight: 600
     }
-  }, s.service)), /*#__PURE__*/React.createElement("div", {
+  }, s.service), s.bonus > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      background: "#FFF0EB",
+      color: "#FF5722",
+      padding: "2px 6px",
+      borderRadius: 20,
+      fontWeight: 600
+    }
+  }, "🎯 ミッション含")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#6B7280"
@@ -1820,7 +1830,49 @@ function SessCard({
       background: "#F3F4F6",
       padding: "0 16px 16px"
     }
-  }, hasDetail ? /*#__PURE__*/React.createElement("div", {
+  }, s.bonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12,
+      padding: "8px 10px",
+      background: "#FFF0EB",
+      borderRadius: 8,
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#9CA3AF",
+      marginBottom: 2
+    }
+  }, "売上内訳"), /*#__PURE__*/React.createElement("div", null, "🛵 配達料 ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, yen(delivTotal))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#FF5722"
+    }
+  }, "🎯 ミッション/クエスト ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, "+", yen(s.bonus)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right",
+      alignSelf: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#9CA3AF"
+    }
+  }, "合計"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700
+    }
+  }, yen(total)))), hasDetail ? /*#__PURE__*/React.createElement("div", {
     style: {
       paddingTop: 12
     }
@@ -1901,16 +1953,6 @@ function SessCard({
       borderTop: "1px solid #2A2D3A"
     }
   }, s.memo), /*#__PURE__*/React.createElement("button", {
-    className: "btn btn-g",
-    onClick: e => {
-      e.stopPropagation();
-    },
-    style: {
-      marginTop: 10,
-      padding: 10,
-      display: "none"
-    }
-  }), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-d",
     onClick: () => onDelete(s.id),
     style: {
