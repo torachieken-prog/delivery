@@ -292,7 +292,7 @@ async function analyzeImg(ak, b64, mime) {
     },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 800,
+      max_tokens: 2500,
       messages: [{
         role: "user",
         content: [{
@@ -315,7 +315,18 @@ async function analyzeImg(ak, b64, mime) {
   }
   const d = await r.json();
   const txt = d.content?.find(c => c.type === "text")?.text || "";
-  return JSON.parse(txt.replace(/```json|```/g, "").trim());
+  const clean=txt.replace(/```json|```/g,"").trim();
+      try{return JSON.parse(clean);}catch(e){
+        // 途中切れの場合、最後の完全な配達までを切り詰めて再試行
+        const lastBrace=clean.lastIndexOf('}');
+        if(lastBrace<0)throw e;
+        let fixed=clean.slice(0,lastBrace+1);
+        // deliveries配列が閉じていない場合に補完
+        const openBrackets=(fixed.match(/\[/g)||[]).length-(fixed.match(/\]/g)||[]).length;
+        const openBraces=(fixed.match(/\{/g)||[]).length-(fixed.match(/\}/g)||[]).length;
+        fixed+=']'.repeat(Math.max(0,openBrackets))+'}'.repeat(Math.max(0,openBraces));
+        return JSON.parse(fixed);
+      }
 }
 
 // ── Setup ────────────────────────────────────────────────────────────
@@ -795,9 +806,9 @@ function HomeTab({
   onAdd
 }) {
   const today = new Date().toISOString().slice(0, 10);
-  // 直近データのある月を使う（データが2024年でも正しく表示）
   const latestMonth = sessions.length > 0 ? sessions[0].date.slice(0, 7) : today.slice(0, 7);
-  const tm = latestMonth;
+  const [navMonth, setNavMonth] = useState(null);
+  const tm = navMonth || latestMonth;
   const isCurrentMonth = tm === today.slice(0, 7);
   const ms = sessions.filter(s => s.date.startsWith(tm));
   const mRev = ms.reduce((a, s) => a + sessTotal(s), 0);
@@ -805,92 +816,154 @@ function HomeTab({
   const mDays = new Set(ms.map(s => s.date)).size;
   const rawMHrs = ms.reduce((a, s) => a + (s.total_time || 0), 0);
   const mCnt = ms.reduce((a, s) => a + (sessCount(s) || 0), 0);
+  const mDist = ms.reduce((a, s) => a + (sessDist(s) || 0), 0);
   const todayRev = isCurrentMonth ? sessions.filter(s => s.date === today).reduce((a, s) => a + sessTotal(s), 0) : 0;
-  // 実稼働時間（ログから集計）
   const mActualHrs = Object.entries(logs || {}).filter(([d]) => d.startsWith(tm)).reduce((a, [, l]) => a + (l.actual_time || 0), 0);
   const mHrs = mActualHrs > 0 ? mActualHrs : rawMHrs;
-  const hourlyRate = mHrs > 0 ? Math.round(mRev / mHrs) : null;
-  const hrLabel = mActualHrs > 0 ? `実稼働${mActualHrs}h` : `オンライン${rawMHrs.toFixed(1)}h`;
+  const hourlyRate = mHrs > 0 ? Math.round(mRev / mHrs) : 0;
+  const avgPerDelivery = mCnt > 0 ? Math.round(mRev / mCnt) : 0;
+  const prevM = m => {
+    const [y, mo] = m.split('-').map(Number);
+    return mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, '0')}`;
+  };
+  const nextM = m => {
+    const [y, mo] = m.split('-').map(Number);
+    return mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, '0')}`;
+  };
+  const allMonths = [...new Set(sessions.map(s => s.date.slice(0, 7)))].sort();
+  const canNext = allMonths.indexOf(tm) < allMonths.length - 1 || isCurrentMonth;
+  const hrLabel = mActualHrs > 0 ? `実稼働` : rawMHrs > 0 ? `オンライン` : ``;
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
-      padding: "28px 16px 16px"
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "20px 16px 4px"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNavMonth(prevM(tm)),
+    style: {
+      background: "none",
+      border: "1px solid #E5E7EB",
+      borderRadius: 8,
+      width: 32,
+      height: 32,
+      cursor: "pointer",
+      fontSize: 16,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, "‹"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#374151"
+    }
+  }, toMonthLabel(tm)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      const n = nextM(tm);
+      setNavMonth(n === latestMonth ? null : n);
+    },
+    disabled: !canNext,
+    style: {
+      background: "none",
+      border: "1px solid #E5E7EB",
+      borderRadius: 8,
+      width: 32,
+      height: 32,
+      cursor: "pointer",
+      fontSize: 16,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      opacity: canNext ? 1 : 0.3
+    }
+  }, "›")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "8px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: "16px 20px"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 12,
-      color: "#6B7280",
+      fontSize: 11,
+      color: "#9CA3AF",
       marginBottom: 4
     }
-  }, toMonthLabel(tm), " の実績"), /*#__PURE__*/React.createElement("div", {
+  }, "売上合計"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 40,
+      fontSize: 38,
       fontWeight: 800,
-      letterSpacing: -2,
-      lineHeight: 1.1
+      letterSpacing: -1,
+      lineHeight: 1.1,
+      color: "#111827"
     }
   }, yen(mRev)), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 13,
-      color: "#6B7280",
-      marginTop: 5
+      display: "flex",
+      gap: 12,
+      marginTop: 8,
+      fontSize: 12,
+      color: "#6B7280"
     }
-  }, "経費 ", yen(mExp), " ／ 手取り ", yen(mRev - mExp)), hourlyRate && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "経費 ", yen(mExp)), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 14,
-      fontWeight: 700,
-      color: "#FF5722",
-      marginTop: 4
+      color: "#374151",
+      fontWeight: 600
     }
-  }, yen(hourlyRate), /*#__PURE__*/React.createElement("span", {
+  }, "手取り ", yen(mRev - mExp))), todayRev > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8,
+      paddingTop: 8,
+      borderTop: "1px solid #F3F4F6",
+      fontSize: 12,
+      color: "#6B7280"
+    }
+  }, "今日 ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      color: "#FF5722"
+    }
+  }, yen(todayRev))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0 16px 8px",
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 8
+    }
+  }, [["件数", `${mCnt}件`, null], ["稼働時間", `${mHrs.toFixed(1)}h`, hrLabel ? `(${hrLabel})` : null], ["一件平均", avgPerDelivery ? yen(avgPerDelivery) : "-", null], ["時給", hourlyRate ? yen(hourlyRate) : "-", "#FF5722"], ["走行距離", mDist ? `${mDist.toFixed(1)}km` : "-", null], ["経費", yen(mExp), null]].map(([label, value, sub]) => /*#__PURE__*/React.createElement("div", {
+    key: label,
+    className: "card",
+    style: {
+      padding: "12px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 400,
-      color: "#9CA3AF"
+      color: "#9CA3AF",
+      marginBottom: 4
     }
-  }, "/h（", hrLabel, "）"))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr",
-      gap: 8,
-      padding: "0 16px 16px"
-    }
-  }, [["稼働日", `${mDays}日`], ["件数", `${mCnt}件`], ["時間", `${mHrs.toFixed(1)}h`]].map(([l, v]) => /*#__PURE__*/React.createElement("div", {
-    key: l,
-    className: "card",
-    style: {
-      textAlign: "center",
-      padding: "12px 8px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "lbl"
-  }, l), /*#__PURE__*/React.createElement("div", {
+  }, label), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 20,
-      fontWeight: 700
+      fontWeight: 700,
+      color: sub && sub.startsWith("#") ? sub : "#111827"
     }
-  }, v)))), todayRev > 0 && /*#__PURE__*/React.createElement("div", {
+  }, value), sub && !sub.startsWith("#") && /*#__PURE__*/React.createElement("div", {
     style: {
-      padding: "0 16px 12px"
+      fontSize: 10,
+      color: "#9CA3AF",
+      marginTop: 2
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "card",
-    style: {
-      borderLeft: "3px solid #FF5722",
-      padding: "12px 16px",
-      borderRadius: "0 14px 14px 0"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "lbl"
-  }, "今日"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 24,
-      fontWeight: 700
-    }
-  }, yen(todayRev)))), /*#__PURE__*/React.createElement("div", {
+  }, sub)))), /*#__PURE__*/React.createElement("div", {
     style: {
       height: 1,
       background: "#E5E7EB",
-      margin: "0 16px"
+      margin: "4px 16px 0"
     }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -3202,7 +3275,7 @@ function DetailPage({
         },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
-          max_tokens: 800,
+          max_tokens: 2500,
           messages: [{
             role: "user",
             content: `以下の稼働ログテキストから各項目を抽出してください。JSONのみ返してください（コードブロック不要）:\n{"score":数値または0,"good":"良かった点","improve":"改善点","insights":"気づき","nextTheme":"次回テーマ","noteIdeas":"noteネタ"}\n\n${bulkText}`
