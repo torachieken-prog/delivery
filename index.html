@@ -3075,7 +3075,17 @@ function AnalysisTab({
       color: "#9CA3AF",
       marginTop: 6
     }
-  }, "未入力の場合、画像読み取りは使えません")), showSettings && /*#__PURE__*/React.createElement(ProxySettings, null), showSettings && /*#__PURE__*/React.createElement(BinSync, null)));
+  }, "未入力の場合、画像読み取りは使えません")), showSettings && /*#__PURE__*/React.createElement(ProxySettings, null), showSettings && /*#__PURE__*/React.createElement(BinSync, null), showSettings && /*#__PURE__*/React.createElement(BackupRestore, {
+      sessions: sessions,
+      expenses: expenses,
+      logs: logs,
+      onRestore: (data) => {
+        if (data.sessions) { setSessions(data.sessions); sessRef.current = data.sessions; }
+        if (data.expenses) { setExpenses(data.expenses); expRef.current = data.expenses; }
+        if (data.logs) { setLogs(data.logs); logRef.current = data.logs; }
+        forceSave(data.sessions || sessRef.current);
+      }
+    })));
 }
 function AutoTextarea({
   value,
@@ -3102,6 +3112,57 @@ function AutoTextarea({
       minHeight: 72
     }
   });
+}
+function BackupRestore({sessions, expenses, logs, onRestore}) {
+  const [restoreErr, setRestoreErr] = React.useState("");
+  const [restoreOk, setRestoreOk] = React.useState(false);
+  const fileRef = React.useRef();
+  const download = () => {
+    const data = {sessions, expenses, logs, exportedAt: new Date().toISOString()};
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `delivery_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const restore = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.sessions) throw new Error("sessionsが見つかりません");
+        if (window.confirm(`${data.sessions.length}件のセッションを復元します。現在のデータは上書きされます。よろしいですか？`)) {
+          onRestore(data);
+          setRestoreOk(true);
+          setRestoreErr("");
+          setTimeout(() => setRestoreOk(false), 3000);
+        }
+      } catch(e) { setRestoreErr("復元失敗: " + e.message); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+  return React.createElement('div', {style:{padding:'12px 16px',borderTop:'1px solid #2A2D3A'}},
+    React.createElement('div', {style:{fontSize:12,fontWeight:700,color:'#9CA3AF',marginBottom:10}}, '💾 バックアップ'),
+    React.createElement('div', {style:{display:'flex',gap:8}},
+      React.createElement('button', {
+        onClick: download,
+        style:{flex:1,padding:'10px',background:'#1E40AF',color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontSize:13,fontFamily:'inherit',fontWeight:600}
+      }, '⬇ JSONをダウンロード'),
+      React.createElement('button', {
+        onClick: () => fileRef.current.click(),
+        style:{flex:1,padding:'10px',background:'#374151',color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontSize:13,fontFamily:'inherit',fontWeight:600}
+      }, '⬆ JSONから復元')
+    ),
+    React.createElement('input', {type:'file',accept:'.json',ref:fileRef,style:{display:'none'},onChange:restore}),
+    restoreOk && React.createElement('div', {style:{marginTop:8,fontSize:12,color:'#10B981'}}, '✓ 復元完了'),
+    restoreErr && React.createElement('div', {style:{marginTop:8,fontSize:12,color:'#EF4444'}}, restoreErr),
+    React.createElement('div', {style:{fontSize:11,color:'#6B7280',marginTop:8}}, '定期的にダウンロードしてデータを保管してください')
+  );
 }
 function ProxySettings() {
   const [proxyUrl, setProxyUrl] = useState(localStorage.getItem("drv_proxy") || "");
