@@ -1065,7 +1065,7 @@ function HomeTab({
           fontSize: 14,
           fontWeight: 700
         }
-      }, toJpDate(date)), multi && /*#__PURE__*/React.createElement("span", {
+      }, toJpDate(date), logs && logs[date] && logs[date].weather ? " " + WMO_EMOJI(logs[date].weather.code) : ""), multi && /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 13,
           fontWeight: 700,
@@ -1927,7 +1927,9 @@ function CalendarView({sessions, logs, onOpenDetail, navMonth, setNavMonth}) {
           style:{minHeight:64,background:cell&&cell.hasSessions?`rgba(255,87,34,${Math.min(0.1+cell.total/maxDay*0.3,0.45)})`:'transparent',borderRadius:8,padding:'4px 3px',cursor:cell&&cell.hasSessions?'pointer':'default',border:cell&&cell.hasSessions?'1px solid rgba(255,87,34,0.25)':'1px solid transparent'}
         },
           cell&&React.createElement(React.Fragment,null,
-            React.createElement('div',{style:{fontSize:12,fontWeight:600,color:di===5?'#3B82F6':di===6?'#EF4444':'#374151',marginBottom:1}},cell.d),
+            React.createElement('div',{style:{fontSize:12,fontWeight:600,color:di===5?'#3B82F6':di===6?'#EF4444':'#374151',marginBottom:1}},
+              cell.d, logs&&logs[cell.dateStr]&&logs[cell.dateStr].weather ? React.createElement('span',{style:{fontSize:11,marginLeft:2}},WMO_EMOJI(logs[cell.dateStr].weather.code)) : null
+            ),
             cell.hasSessions&&React.createElement(React.Fragment,null,
               React.createElement('div',{style:{fontSize:10,fontWeight:700,color:'#FF5722',lineHeight:1.3}},yen(cell.total)),
               React.createElement('div',{style:{fontSize:9,color:'#6B7280'}},`${cell.count}件`)
@@ -2264,7 +2266,7 @@ function DayGroup({
         fontSize: 14,
         fontWeight: 600
       }
-    }, toJpDate(date)), ss.map(s => /*#__PURE__*/React.createElement("span", {
+    }, toJpDate(date), logs && logs[date] && logs[date].weather ? " " + WMO_EMOJI(logs[date].weather.code) : ""), ss.map(s => /*#__PURE__*/React.createElement("span", {
       key: s.id,
       style: {
         fontSize: 11,
