@@ -46,6 +46,17 @@ const LS = {
   BIN: "drv_binid",
   AK: "drv_akey"
 };
+const APP_VERSION = "2.6";
+const WMO_EMOJI = c => c===0?'☀️':c<=1?'🌤️':c<=2?'⛅':c<=3?'🌥️':c<=48?'🌫️':c<=55?'🌦️':c<=65?'🌧️':c<=77?'🌨️':c<=82?'🌦️':c<=86?'🌨️':'⛈️';
+const WMO_LABEL = c => c===0?'快晴':c<=1?'晴れ':c<=2?'晴れ時々曇り':c<=3?'曇り':c<=48?'霧':c<=55?'霧雨':c<=65?'雨':c<=77?'雪':c<=82?'雨':c<=86?'雪':'雷雨';
+async function fetchWeather(date) {
+  const diffDays=(new Date(new Date().toISOString().slice(0,10))-new Date(date))/86400000;
+  const p=`latitude=35.78&longitude=139.72&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo&start_date=${date}&end_date=${date}`;
+  const url=diffDays>5?`https://archive-api.open-meteo.com/v1/archive?${p}`:`https://api.open-meteo.com/v1/forecast?${p}`;
+  const r=await fetch(url);if(!r.ok)throw new Error('天気取得失敗');
+  const d=await r.json();
+  return{code:d.daily.weathercode[0],tmax:Math.round(d.daily.temperature_2m_max[0]),tmin:Math.round(d.daily.temperature_2m_min[0])};
+}
 const uid = () => Math.random().toString(36).slice(2, 10);
 const yen = n => `¥${Math.round(n || 0).toLocaleString()}`;
 const toJpDate = d => {
@@ -506,6 +517,26 @@ function App() {
     });
   }, []);
 
+  // バージョンチェック：新バージョン初回起動時に自動バックアップDL
+  useEffect(()=>{
+    const stored=localStorage.getItem("drv_app_version");
+    if(stored&&stored!==APP_VERSION){
+      setTimeout(()=>{
+        const s=sessRef.current;
+        if(s.length>0){
+          const data={sessions:s,expenses:expRef.current,logs:logRef.current,exportedAt:new Date().toISOString(),fromVersion:stored};
+          const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement('a');a.href=url;
+          a.download=`delivery_backup_v${stored}_${new Date().toISOString().slice(0,10)}.json`;
+          a.click();URL.revokeObjectURL(url);
+          setStatus("saved:auto_backup");setTimeout(()=>setStatus(""),5000);
+        }
+      },2000);
+    }
+    localStorage.setItem("drv_app_version",APP_VERSION);
+  },[]);
+
   // 即時保存 + 読み返し検証（refsから読むのでstale closure問題なし）
   const forceSave = useCallback(async overSess => {
     if (timer.current) clearTimeout(timer.current);
@@ -728,7 +759,7 @@ function App() {
       borderRadius: "0 0 10px 10px",
       textAlign: "center"
     }
-  }, status === "saving" ? "保存中..." : status.startsWith("saved:") ? "✓ 保存確認済み (" + status.split(":")[1] + "件)" : status.startsWith("ERR:") ? status : "保存中..."), tab === "home" && /*#__PURE__*/React.createElement(HomeTab, {
+  }, status === "saving" ? "保存中..." : status === "saved:auto_backup" ? "💾 アップデート前のバックアップを自動保存しました" : status.startsWith("saved:") ? "✓ 保存確認済み (" + status.split(":")[1] + "件)" : status.startsWith("ERR:") ? status : "保存中..."), tab === "home" && /*#__PURE__*/React.createElement(HomeTab, {
     sessions: sessions,
     expenses: expenses,
     logs: logs,
@@ -3338,6 +3369,8 @@ function DetailPage({
   const [nextTheme, setNextTheme] = useState(log.nextTheme || "");
   const [noteIdeas, setNoteIdeas] = useState(log.noteIdeas || "");
   const [saving, setSaving] = useState(false);
+  const [wxLoading, setWxLoading] = useState(false);
+  const [wxErr, setWxErr] = useState("");
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -3402,6 +3435,12 @@ function DetailPage({
       onUpdateLog(merged);
       setSaving(false);
     }, 1500);
+  };
+  const getWeather = async () => {
+    setWxLoading(true);setWxErr("");
+    try{const w=await fetchWeather(date);save({weather:w});}
+    catch(e){setWxErr(e.message);}
+    finally{setWxLoading(false);}
   };
   const parseBulk = async () => {
     const ak = localStorage.getItem("drv_akey") || "";
@@ -3619,7 +3658,23 @@ function DetailPage({
       color: "#FF5722",
       marginTop: 4
     }
-  }, "🎯 ミッションボーナス含む: ", sessions.filter(s => s.bonus > 0).map(s => `${s.service} +${yen(s.bonus)}`).join('、'))), sessions.map(s => editId === s.id && editDraft ? /*#__PURE__*/React.createElement("div", {
+  }, "🎯 ミッションボーナス含む: ", sessions.filter(s => s.bonus > 0).map(s => `${s.service} +${yen(s.bonus)}`).join('、'))),
+  /*#__PURE__*/React.createElement("div", {style:{padding:"4px 16px 8px"}},
+    /*#__PURE__*/React.createElement("div", {className:"card", style:{padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+      log.weather ? /*#__PURE__*/React.createElement(React.Fragment, null,
+        /*#__PURE__*/React.createElement("span", {style:{fontSize:22}}, WMO_EMOJI(log.weather.code)),
+        /*#__PURE__*/React.createElement("div", {style:{flex:1}},
+          /*#__PURE__*/React.createElement("div", {style:{fontWeight:600,fontSize:13}}, WMO_LABEL(log.weather.code)),
+          /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#6B7280"}}, log.weather.tmin+"°〜"+log.weather.tmax+"°C")
+        ),
+        /*#__PURE__*/React.createElement("button", {onClick:getWeather,disabled:wxLoading,style:{background:"none",border:"1px solid #E5E7EB",borderRadius:8,padding:"4px 10px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}, wxLoading?"取得中...":"🔄 更新")
+      ) : /*#__PURE__*/React.createElement(React.Fragment, null,
+        /*#__PURE__*/React.createElement("span", {style:{fontSize:11,color:"#9CA3AF"}}, "稼働日の天気"),
+        /*#__PURE__*/React.createElement("button", {onClick:getWeather,disabled:wxLoading,style:{background:"none",border:"1px solid #E5E7EB",borderRadius:8,padding:"5px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"#374151"}}, wxLoading?"取得中...":"🌤 天気を取得")
+      ),
+      wxErr && /*#__PURE__*/React.createElement("span", {style:{fontSize:11,color:"#EF4444",width:"100%"}}, wxErr)
+    )
+  ), sessions.map(s => editId === s.id && editDraft ? /*#__PURE__*/React.createElement("div", {
     key: s.id,
     style: {
       padding: "8px 16px 0"
