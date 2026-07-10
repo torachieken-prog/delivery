@@ -61,6 +61,51 @@ const sessCount = s => {
   const det = s.deliveries.filter(d => !d._agg);
   return det.length > 0 ? det.length : s.deliveries[0]?._count || null;
 };
+
+const WMO_EMOJI = code => {
+  if (code === 0) return '☀️';
+  if (code <= 1) return '🌤️';
+  if (code <= 2) return '⛅';
+  if (code <= 3) return '🌥️';
+  if (code <= 48) return '🌫️';
+  if (code <= 55) return '🌦️';
+  if (code <= 65) return '🌧️';
+  if (code <= 77) return '🌨️';
+  if (code <= 82) return '🌦️';
+  if (code <= 86) return '🌨️';
+  return '⛈️';
+};
+const WMO_LABEL = code => {
+  if (code === 0) return '快晴';
+  if (code <= 1) return '晴れ';
+  if (code <= 2) return '晴れ時々曇り';
+  if (code <= 3) return '曇り';
+  if (code <= 48) return '霧';
+  if (code <= 55) return '霧雨';
+  if (code <= 65) return '雨';
+  if (code <= 77) return '雪';
+  if (code <= 82) return '雨';
+  if (code <= 86) return '雪';
+  return '雷雨';
+};
+async function fetchWeather(date) {
+  const today = new Date().toISOString().slice(0, 10);
+  const diffDays = (new Date(today) - new Date(date)) / 86400000;
+  const lat = 35.78, lon = 139.72;
+  const params = `latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo&start_date=${date}&end_date=${date}`;
+  const url = diffDays > 5
+    ? `https://archive-api.open-meteo.com/v1/archive?${params}`
+    : `https://api.open-meteo.com/v1/forecast?${params}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('天気取得失敗');
+  const data = await res.json();
+  return {
+    code: data.daily.weathercode[0],
+    temp_max: Math.round(data.daily.temperature_2m_max[0]),
+    temp_min: Math.round(data.daily.temperature_2m_min[0])
+  };
+}
+
 const sessDist = s => {
   const ds = s.deliveries.filter(d => d.distance > 0);
   return ds.length ? ds.reduce((a, d) => a + d.distance, 0) : null;
@@ -2265,7 +2310,7 @@ function DayGroup({
         fontSize: 10,
         color: "#9CA3AF"
       }
-    }, "⏱実稼働"), /*#__PURE__*/React.createElement("input", {
+    }, "⏱実稼働"), logs && logs[date] && logs[date].weather ? /*#__PURE__*/React.createElement("span", {style:{fontSize:14,marginLeft:4}}, WMO_EMOJI(logs[date].weather.code), " ", /*#__PURE__*/React.createElement("span",{style:{fontSize:10,color:"#6B7280"}}, logs[date].weather.temp_min, "°〜", logs[date].weather.temp_max, "°")) : null, /*#__PURE__*/React.createElement("input", {
       type: "number",
       step: ".5",
       value: logs && logs[date]?.actual_time || "",
@@ -2339,6 +2384,7 @@ function AnalysisTab({
     mData[m].hours += s.total_time || 0;
     mData[m].count += sessCount(s) || 0;
     mData[m].days.add(s.date);
+    mData[m].dist=(mData[m].dist||0)+(sessDist(s)||0);
   });
   const monthArr = Object.entries(mData).sort(([a], [b]) => b.localeCompare(a)).map(([k, v]) => {
     const actualHrs = Object.entries(logs || {}).filter(([d]) => d.startsWith(k)).reduce((a, [, l]) => a + (l.actual_time || 0), 0);
@@ -2352,8 +2398,8 @@ function AnalysisTab({
       hours,
       count: v.count,
       days: v.days.size,
-      bonus: v.bonus || 0
-    };
+      bonus: v.bonus || 0,
+      dist: v.dist || 0
   });
   const maxRev = Math.max(...monthArr.map(m => m.revenue), 1);
   const svcs = {};
@@ -2361,11 +2407,13 @@ function AnalysisTab({
     if (!svcs[s.service]) svcs[s.service] = {
       revenue: 0,
       hours: 0,
-      count: 0
+      count: 0,
+      dist: 0
     };
     svcs[s.service].revenue += sessTotal(s);
     svcs[s.service].hours += s.total_time || 0;
     svcs[s.service].count += sessCount(s) || 0;
+    svcs[s.service].dist = (svcs[s.service].dist||0) + (sessDist(s)||0);
   });
   const areas = {};
   sessions.forEach(s => s.deliveries.filter(d => !d._agg && d.drop).forEach(d => {
@@ -2875,7 +2923,7 @@ function AnalysisTab({
       color: "#6B7280",
       marginTop: 3
     }
-  }, m.days, "日稼働\u3000", m.count, "件\u3000", m.hours.toFixed(1), "h"), m.bonus > 0 && /*#__PURE__*/React.createElement("div", {
+  }, m.days, "日稼働\u3000", m.count, "件\u3000", m.hours.toFixed(1), "h", m.dist>0?"\u3000km単価 "+yen(Math.round(m.revenue/m.dist))+"/km":""), m.bonus > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#FF5722",
@@ -2968,7 +3016,7 @@ function AnalysisTab({
       fontSize: 12,
       color: "#6B7280"
     }
-  }, v.hours ? `時給 ${yen(Math.round(v.revenue / v.hours))}` : "", v.count ? `　${v.count}件` : "")), /*#__PURE__*/React.createElement("div", {
+  }, v.hours ? `時給 ${yen(Math.round(v.revenue / v.hours))}` : "", v.count ? `　${v.count}件` : "", v.dist ? `　km単価 ${yen(Math.round(v.revenue / v.dist))}/km` : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 700,
       fontSize: 16
@@ -3338,6 +3386,17 @@ function DetailPage({
   const [parseErr, setParseErr] = useState("");
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherErr, setWeatherErr] = useState("");
+  const weather = log.weather || null;
+  const getWeather = async () => {
+    setWeatherLoading(true); setWeatherErr("");
+    try {
+      const w = await fetchWeather(date);
+      save({weather: w});
+    } catch(e) { setWeatherErr(e.message); }
+    finally { setWeatherLoading(false); }
+  };
   const timer = useRef();
   const startEdit = s => {
     setEditId(s.id);
@@ -3613,7 +3672,23 @@ function DetailPage({
       color: "#FF5722",
       marginTop: 4
     }
-  }, "🎯 ミッションボーナス含む: ", sessions.filter(s => s.bonus > 0).map(s => `${s.service} +${yen(s.bonus)}`).join('、')))), sessions.map(s => editId === s.id && editDraft ? /*#__PURE__*/React.createElement("div", {
+  }, "🎯 ミッションボーナス含む: ", sessions.filter(s => s.bonus > 0).map(s => `${s.service} +${yen(s.bonus)}`).join('、'))), /*#__PURE__*/React.createElement("div", {
+    style: {display:"flex", alignItems:"center", gap:10, marginTop:8, flexWrap:"wrap"}
+  }, weather ? /*#__PURE__*/React.createElement("div", {
+    style: {display:"flex", alignItems:"center", gap:6, padding:"6px 10px", background:"#F0F9FF", borderRadius:8, fontSize:13}
+  }, /*#__PURE__*/React.createElement("span", {style:{fontSize:20}}, WMO_EMOJI(weather.code)),
+    /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("div", {style:{fontWeight:600}}, WMO_LABEL(weather.code)),
+      /*#__PURE__*/React.createElement("div", {style:{fontSize:11, color:"#6B7280"}}, `${weather.temp_min}°〜${weather.temp_max}°C`)
+    )
+  ) : null,
+  /*#__PURE__*/React.createElement("button", {
+    onClick: getWeather,
+    disabled: weatherLoading,
+    style: {padding:"6px 12px", background:"none", border:"1px solid #E5E7EB", borderRadius:8, cursor:"pointer", fontSize:12, color:"#374151", fontFamily:"inherit"}
+  }, weatherLoading ? "取得中..." : weather ? "🔄 更新" : "🌤 天気を取得"),
+  weatherErr && /*#__PURE__*/React.createElement("span", {style:{fontSize:11, color:"#EF4444"}}, weatherErr)
+  )), sessions.map(s => editId === s.id && editDraft ? /*#__PURE__*/React.createElement("div", {
     key: s.id,
     style: {
       padding: "8px 16px 0"
