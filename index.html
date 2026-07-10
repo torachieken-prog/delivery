@@ -613,11 +613,18 @@ function App() {
     setSessions(next);
     sessRef.current = next;
     forceSave(next);
+    // 天気データが未取得なら自動取得
+    if (!logRef.current[s.date]?.weather) {
+      fetchWeather(s.date).then(w => {
+        const newLogs = {...logRef.current, [s.date]: {...(logRef.current[s.date]||{}), weather: w}};
+        updLogs(newLogs);
+      }).catch(()=>{});
+    }
     setTab("log");
     setAddStep("pick");
     setDraft(null);
     setAddErr("");
-  }, [forceSave]);
+  }, [forceSave, updLogs]);
   const delSession = useCallback(id => {
     const next = sessRef.current.filter(x => x.id !== id);
     setSessions(next);
